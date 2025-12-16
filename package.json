@@ -1,0 +1,17 @@
+{
+  "name": "painel-shopping-premium",
+  "version": "1.0.0",
+  "description": "Painel Digital Signage com Socket.io",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

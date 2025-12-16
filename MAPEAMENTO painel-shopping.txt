@@ -1,0 +1,9 @@
+painel-shopping/
+├── public/              <-- (Pasta amarela)
+│   ├── otica_sorte.jpg
+│   ├── horti_intro.jpg
+│   └── (suas outras imagens...)
+├── config.js            <-- (Arquivo JS)
+├── index.js             <-- (Arquivo JS - O Motor)
+├── package.json         <-- (Arquivo JSON - A Lista de peças)
+└── templates.js         <-- (Arquivo JS - O Visual)
