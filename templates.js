@@ -13,15 +13,15 @@ const htmlTV = `
             font-family: 'Montserrat', sans-serif; 
             height: 100vh; 
             display: flex; 
-            flex-direction: column; /* Organiza em: Conteúdo Principal EM CIMA, Rodapé EMBAIXO */
+            flex-direction: column; 
         }
         
         /* --- ÁREA SUPERIOR (IMAGEM + BARRA LATERAL) --- */
         #main-content {
-            flex: 1; /* Ocupa todo o espaço disponível menos o rodapé */
+            flex: 1; /* Ocupa o espaço exceto rodapé */
             display: flex;
             width: 100%;
-            height: 85vh; /* Ajuste fino */
+            height: 85vh; 
         }
 
         /* LADO ESQUERDO: IMAGEM */
@@ -100,7 +100,7 @@ const htmlTV = `
             border-top: 2px solid #333;
             display: flex;
             align-items: center;
-            justify-content: space-around; /* Espalha as logos */
+            justify-content: space-around;
             padding: 0 20px;
             z-index: 20;
         }
@@ -108,21 +108,15 @@ const htmlTV = `
         .patrocinador-item {
             display: flex;
             align-items: center;
-            opacity: 0.7;
+            opacity: 0.5;
             transition: opacity 0.3s, transform 0.3s;
         }
         
-        /* Quando o slide ativo for desta loja, ela brilha no rodapé */
+        /* Destaque da loja ativa */
         .patrocinador-item.ativo {
             opacity: 1;
-            transform: scale(1.1);
+            transform: scale(1.2);
             filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
-        }
-
-        .patrocinador-logo {
-            height: 50px; /* Tamanho das logos */
-            margin-right: 10px;
-            object-fit: contain;
         }
 
         .patrocinador-nome {
@@ -162,14 +156,14 @@ const htmlTV = `
     <div id="footer">
         <div style="color:#555; font-size:0.8rem; margin-right:20px; font-weight:bold;">OFERECIMENTO:</div>
         
-        <div class="patrocinador-item" id="brand-Hortifruti">
-            <span class="patrocinador-nome" style="color:#4CAF50">Hortifruti</span>
-        </div>
-        
         <div class="patrocinador-item" id="brand-OticaMax">
             <span class="patrocinador-nome" style="color:#2196F3">Ótica Max</span>
         </div>
 
+        <div class="patrocinador-item" id="brand-Hortifruti">
+            <span class="patrocinador-nome" style="color:#4CAF50">Hortifruti</span>
+        </div>
+        
         <div class="patrocinador-item" id="brand-Magalu">
             <span class="patrocinador-nome" style="color:#0086FF">Magalu</span>
         </div>
@@ -221,24 +215,15 @@ const htmlTV = `
             document.querySelector('.qr-box').classList.add('pulse');
         }
 
-        // 3. Lógica do Rodapé (Destacar a loja atual)
-        // Remove destaque de todos
+        // 3. Lógica do Rodapé (Destaca a marca atual)
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
         
-        // Tenta achar a marca atual pelo nome configurado no config.js
-        // Ex: se d.loja for 'Hortifruti', procura o id 'brand-Hortifruti'
-        // Removemos espaços ou acentos simples para garantir compatibilidade
-        const nomeLimpo = d.loja.replace(/[^a-zA-Z0-9]/g, ""); 
-        // OBS: Você deve garantir que no config.js os nomes batam com os IDs do HTML acima, 
-        // ou editar o HTML acima para bater com o config.
-        
-        // Tentativa de destaque simples baseada no texto
-        const items = document.querySelectorAll('.patrocinador-nome');
-        items.forEach(el => {
-            if(d.loja.includes(el.innerText) || el.innerText.includes(d.loja)){
-                el.parentElement.classList.add('ativo');
-            }
-        });
+        // Procura o ID que combina com a loja atual (Ex: brand-OticaMax)
+        const idMarca = 'brand-' + d.loja;
+        const marcaEl = document.getElementById(idMarca);
+        if(marcaEl) {
+            marcaEl.classList.add('ativo');
+        }
 
         // 4. QR Code
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
