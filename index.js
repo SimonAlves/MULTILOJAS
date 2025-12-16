@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config'); 
 
 // ---------------------------------------------------------
-// AQUI ESTÁ O VISUAL (TEMPLATES) EMBUTIDO PARA NÃO DAR ERRO
+// VISUAL (TEMPLATES) - COM CORREÇÃO DE CAMINHO DA IMAGEM
 // ---------------------------------------------------------
 
 const htmlTV = `
@@ -20,7 +20,17 @@ const htmlTV = `
         body { margin: 0; background: black; overflow: hidden; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; }
         #main-content { flex: 1; display: flex; width: 100%; height: 85vh; }
         #areaImagem { flex: 4; position: relative; background-color: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #imgPrincipal { max-width: 100%; max-height: 100%; object-fit: contain; z-index: 2; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        
+        /* Ajuste para garantir que a imagem não suma se for muito grande */
+        #imgPrincipal { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; 
+            z-index: 2; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: block; /* Garante display inicial */
+        }
+        
         #fundoDesfocado { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; filter: blur(20px) brightness(0.4); z-index: 1; }
         #sidebar { flex: 1; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; border-left: 4px solid #333; color: white; padding: 10px; text-align: center; position: relative; z-index: 10; transition: border-color 0.5s; }
         .qr-box { background: white; padding: 10px; border-radius: 10px; margin-bottom: 15px; width: 80%; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
@@ -36,7 +46,7 @@ const htmlTV = `
 </head>
 <body>
     <div id="main-content">
-        <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src="" onerror="this.style.display='none'"></div>
+        <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
             <h2 id="textoAcao" class="titulo-acao">ESCANEIE<br>AGORA</h2>
             <div class="qr-box"><img id="qrCode" src="qrcode.png" style="width:100%; display:block;"></div>
@@ -57,7 +67,13 @@ const htmlTV = `
     const socket = io();
     const imgMain = document.getElementById('imgPrincipal'); const bgBlur = document.getElementById('fundoDesfocado'); const sidebar = document.getElementById('sidebar');
     socket.on('trocar_slide', d => {
-        imgMain.src = d.arquivo; bgBlur.style.backgroundImage = \`url('\${d.arquivo}')\`;
+        // --- CORREÇÃO AQUI: Adicionei a barra '/' antes do nome do arquivo ---
+        // Isso garante que ele pegue da pasta raiz (public) e não tente achar dentro de /tv
+        const caminhoImagem = '/' + d.arquivo; 
+
+        imgMain.src = caminhoImagem; 
+        bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
+        
         sidebar.style.borderLeftColor = d.cor; document.getElementById('textoAcao').style.color = d.modo === 'intro' ? '#fff' : d.cor;
         if(d.modo === 'intro') { document.getElementById('textoAcao').innerHTML = "CONHEÇA<br>A LOJA"; document.getElementById('infoExtra').style.display = 'none'; document.querySelector('.qr-box').classList.remove('pulse'); } 
         else { document.getElementById('textoAcao').innerHTML = d.modo === 'sorte' ? "TENTE A<br>SORTE!" : "PEGAR<br>CUPOM"; document.getElementById('infoExtra').style.display = 'block'; document.getElementById('qtdDisplay').innerText = d.qtd; document.querySelector('.qr-box').classList.add('pulse'); }
@@ -85,7 +101,7 @@ socket.on('sucesso',d=>{ jaPegou=true; document.getElementById('telaCarregando')
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><div id="lista"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
 // ---------------------------------------------------------
-// AQUI COMEÇA O MOTOR (SERVIDOR)
+// MOTOR DO SERVIDOR
 // ---------------------------------------------------------
 
 const app = express();
@@ -93,7 +109,7 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 app.use(express.static(__dirname));
-app.use(express.static('public')); 
+app.use(express.static('public')); // Garante que a pasta public seja lida
 
 let historicoVendas = []; 
 let slideAtual = 0;
