@@ -3,58 +3,158 @@ const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
-// --- IMPORTANDO AS CONFIGURAÇÕES DAS LOJAS ---
+// --- IMPORTANDO AS CONFIGURAÇÕES ---
 const campanhas = require('./config'); 
 
 // ---------------------------------------------------------
-// VISUAL (TEMPLATES) - COM CORREÇÃO DE CAMINHO DA IMAGEM
+// VISUAL NOVO (ESTILO AM/PM - VERTICAL)
 // ---------------------------------------------------------
 
 const htmlTV = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TV SHOPPING PREMIUM</title>
+    <title>TV SHOPPING OFERTAS</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+        /* RESET E ESTRUTURA */
         body { margin: 0; background: black; overflow: hidden; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        #main-content { flex: 1; display: flex; width: 100%; height: 85vh; }
-        #areaImagem { flex: 4; position: relative; background-color: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         
-        /* Ajuste para garantir que a imagem não suma se for muito grande */
+        /* LAYOUT PRINCIPAL */
+        #main-content { flex: 1; display: flex; width: 100%; height: 85vh; }
+
+        /* LADO ESQUERDO: IMAGEM DO PRODUTO (80% da tela) */
+        #areaImagem { 
+            flex: 3.5; 
+            position: relative; 
+            background-color: #000; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            overflow: hidden; 
+        }
+        
         #imgPrincipal { 
             max-width: 100%; 
             max-height: 100%; 
             object-fit: contain; 
             z-index: 2; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            display: block; /* Garante display inicial */
+            display: block;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
         
-        #fundoDesfocado { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; filter: blur(20px) brightness(0.4); z-index: 1; }
-        #sidebar { flex: 1; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; border-left: 4px solid #333; color: white; padding: 10px; text-align: center; position: relative; z-index: 10; transition: border-color 0.5s; }
-        .qr-box { background: white; padding: 10px; border-radius: 10px; margin-bottom: 15px; width: 80%; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
-        .titulo-acao { font-weight: 900; font-size: 1.5rem; text-transform: uppercase; margin-bottom: 15px; line-height: 1.1; }
-        .contador { font-size: 3rem; font-weight: 900; color: #ffeb3b; line-height: 1; }
-        .pulse { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        #footer { height: 15vh; background: #0a0a0a; border-top: 2px solid #333; display: flex; align-items: center; justify-content: space-around; padding: 0 20px; z-index: 20; }
-        .patrocinador-item { display: flex; align-items: center; opacity: 0.5; transition: opacity 0.3s, transform 0.3s; }
-        .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 5px rgba(255,255,255,0.5)); }
+        #fundoDesfocado { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background-size: cover; background-position: center; 
+            filter: blur(30px) brightness(0.4); 
+            z-index: 1; 
+        }
+
+        /* LADO DIREITO: BARRA LATERAL (ESTILO AM/PM) */
+        #sidebar { 
+            flex: 1.2; 
+            background: #003399; /* Cor padrão, muda dinamicamente */
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: space-between; /* Espalha o conteúdo */
+            color: white; 
+            padding: 30px 20px; 
+            text-align: center; 
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            z-index: 10;
+            transition: background-color 0.5s ease;
+        }
+
+        /* CABEÇALHO DA BARRA */
+        .sidebar-header { margin-bottom: 20px; }
+        .loja-nome { font-size: 1.8rem; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1; text-shadow: 2px 2px 0px rgba(0,0,0,0.2); }
+        .oferta-titulo { font-size: 1.2rem; margin-top: 10px; font-weight: 400; opacity: 0.9; }
+
+        /* QR CODE BOX (Quadrado Branco) */
+        .qr-container {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            width: 80%;
+            margin: 0 auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        
+        .qr-container img { width: 100%; display: block; }
+
+        /* CTA (Chamada para Ação) */
+        .cta-text {
+            color: #FFD700; /* Amarelo Ouro */
+            font-weight: 900;
+            font-size: 1.6rem;
+            margin-top: 15px;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* DIVISOR TRACEJADO */
+        .divider {
+            width: 100%;
+            border-top: 2px dashed rgba(255,255,255,0.4);
+            margin: 20px 0;
+        }
+
+        /* CONTADOR (Rodapé da Barra) */
+        .counter-area { width: 100%; }
+        .counter-label { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-bottom: 0; }
+        .counter-number {
+            font-size: 5rem;
+            font-weight: 900;
+            color: #FFD700; /* Amarelo Ouro */
+            line-height: 1;
+            margin-top: 5px;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+        }
+
+        /* RODAPÉ GERAL (PARCEIROS) */
+        #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 20px; z-index:20; }
+        .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); }
+        .patrocinador-item.ativo { opacity: 1; transform: scale(1.1); filter: grayscale(0%); }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
+        
+        /* ANIMAÇÕES */
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
+
     <div id="main-content">
-        <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
+        <div id="areaImagem">
+            <div id="fundoDesfocado"></div>
+            <img id="imgPrincipal" src="">
+        </div>
+
         <div id="sidebar">
-            <h2 id="textoAcao" class="titulo-acao">ESCANEIE<br>AGORA</h2>
-            <div class="qr-box"><img id="qrCode" src="qrcode.png" style="width:100%; display:block;"></div>
-            <div id="infoExtra"><p style="font-size:0.8rem; margin-bottom:0; color:#aaa;">DISPONÍVEIS:</p><div id="qtdDisplay" class="contador">--</div></div>
+            <div class="sidebar-header">
+                <h1 id="storeName" class="loja-nome">LOJA</h1>
+                <h2 id="slideType" class="oferta-titulo">Oferta Especial</h2>
+            </div>
+
+            <div class="qr-section">
+                <div class="qr-container pulse">
+                    <img id="qrCode" src="qrcode.png">
+                </div>
+                <div id="ctaText" class="cta-text">GARANTA O SEU</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="counter-area">
+                <p class="counter-label">RESTAM APENAS:</p>
+                <div id="qtdDisplay" class="counter-number">--</div>
+            </div>
         </div>
     </div>
+
     <div id="footer">
-        <div style="color:#555; font-size:0.8rem; margin-right:20px; font-weight:bold;">OFERECIMENTO:</div>
+        <div style="color:#555; font-size:0.8rem; font-weight:bold;">PARCEIROS:</div>
         <div class="patrocinador-item" id="brand-OticaMax"><span class="patrocinador-nome" style="color:#2196F3">Ótica Max</span></div>
         <div class="patrocinador-item" id="brand-Hortifruti"><span class="patrocinador-nome" style="color:#4CAF50">Hortifruti</span></div>
         <div class="patrocinador-item" id="brand-Magalu"><span class="patrocinador-nome" style="color:#0086FF">Magalu</span></div>
@@ -62,27 +162,70 @@ const htmlTV = `
         <div class="patrocinador-item" id="brand-Calcados"><span class="patrocinador-nome" style="color:#F44336">Calçados</span></div>
         <div class="patrocinador-item" id="brand-Floricultura"><span class="patrocinador-nome" style="color:#E91E63">Floricultura</span></div>
     </div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    const imgMain = document.getElementById('imgPrincipal'); const bgBlur = document.getElementById('fundoDesfocado'); const sidebar = document.getElementById('sidebar');
-    socket.on('trocar_slide', d => {
-        // --- CORREÇÃO AQUI: Adicionei a barra '/' antes do nome do arquivo ---
-        // Isso garante que ele pegue da pasta raiz (public) e não tente achar dentro de /tv
-        const caminhoImagem = '/' + d.arquivo; 
+    
+    // Elementos da Tela
+    const imgMain = document.getElementById('imgPrincipal');
+    const bgBlur = document.getElementById('fundoDesfocado');
+    const sidebar = document.getElementById('sidebar');
+    const storeName = document.getElementById('storeName');
+    const slideType = document.getElementById('slideType');
+    const ctaText = document.getElementById('ctaText');
+    const qtdDisplay = document.getElementById('qtdDisplay');
+    const counterArea = document.querySelector('.counter-area');
 
-        imgMain.src = caminhoImagem; 
+    socket.on('trocar_slide', d => {
+        // 1. Imagem (Com correção de caminho)
+        const caminhoImagem = '/' + d.arquivo;
+        imgMain.src = caminhoImagem;
         bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
-        
-        sidebar.style.borderLeftColor = d.cor; document.getElementById('textoAcao').style.color = d.modo === 'intro' ? '#fff' : d.cor;
-        if(d.modo === 'intro') { document.getElementById('textoAcao').innerHTML = "CONHEÇA<br>A LOJA"; document.getElementById('infoExtra').style.display = 'none'; document.querySelector('.qr-box').classList.remove('pulse'); } 
-        else { document.getElementById('textoAcao').innerHTML = d.modo === 'sorte' ? "TENTE A<br>SORTE!" : "PEGAR<br>CUPOM"; document.getElementById('infoExtra').style.display = 'block'; document.getElementById('qtdDisplay').innerText = d.qtd; document.querySelector('.qr-box').classList.add('pulse'); }
+
+        // 2. Cores e Textos da Barra Lateral
+        sidebar.style.backgroundColor = d.cor; // A barra inteira pega a cor da loja
+        storeName.innerText = d.loja; // Nome da Loja no topo
+
+        // 3. Lógica do Tipo de Slide (Intro vs Sorte vs Desconto)
+        if(d.modo === 'intro') {
+            slideType.innerText = "Conheça as Novidades";
+            ctaText.innerText = "ACESSE AGORA";
+            counterArea.style.display = 'none'; // Esconde contador na intro
+            document.querySelector('.qr-container').classList.remove('pulse');
+        } 
+        else if(d.modo === 'sorte') {
+            slideType.innerText = "Sorteio Exclusivo";
+            ctaText.innerText = "TENTE A SORTE";
+            counterArea.style.display = 'block';
+            qtdDisplay.innerText = d.qtd;
+            document.querySelector('.qr-container').classList.add('pulse');
+        }
+        else if(d.modo === 'desconto') {
+            slideType.innerText = "Oferta Relâmpago";
+            ctaText.innerText = "PEGAR CUPOM";
+            counterArea.style.display = 'block';
+            qtdDisplay.innerText = d.qtd;
+            document.querySelector('.qr-container').classList.add('pulse');
+        }
+
+        // 4. Rodapé (Brilho na loja atual)
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
-        const idMarca = 'brand-' + d.loja; const marcaEl = document.getElementById(idMarca); if(marcaEl) marcaEl.classList.add('ativo');
+        const idMarca = 'brand-' + d.loja;
+        const marcaEl = document.getElementById(idMarca);
+        if(marcaEl) marcaEl.classList.add('ativo');
+
+        // 5. Gera QR Code
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
     });
-    socket.on('atualizar_qtd', d => { document.getElementById('qtdDisplay').innerText = d.qtd; });
-</script></body></html>`;
+
+    socket.on('atualizar_qtd', d => {
+        qtdDisplay.innerText = d.qtd;
+    });
+</script>
+</body>
+</html>
+`;
 
 const htmlMobile = `
 <!DOCTYPE html><html><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial,sans-serif;text-align:center;padding:20px;background:#f0f2f5}.loader{border:5px solid #f3f3f3;border-top:5px solid #333;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}</style><body>
@@ -100,16 +243,13 @@ socket.on('sucesso',d=>{ jaPegou=true; document.getElementById('telaCarregando')
 
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><div id="lista"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
-// ---------------------------------------------------------
-// MOTOR DO SERVIDOR
-// ---------------------------------------------------------
-
+// --- CONFIGURAÇÃO DO SERVIDOR ---
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
 app.use(express.static(__dirname));
-app.use(express.static('public')); // Garante que a pasta public seja lida
+app.use(express.static('public')); 
 
 let historicoVendas = []; 
 let slideAtual = 0;
