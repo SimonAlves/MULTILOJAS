@@ -3,10 +3,13 @@ const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
-// --- IMPORTANDO CONFIGURAÇÕES (Isso continua necessário) ---
+// --- IMPORTANDO AS CONFIGURAÇÕES DAS LOJAS ---
 const campanhas = require('./config'); 
 
-// --- AQUI ESTÁ A SOLUÇÃO: O VISUAL (TEMPLATES) DENTRO DO MOTOR ---
+// ---------------------------------------------------------
+// AQUI ESTÁ O VISUAL (TEMPLATES) EMBUTIDO PARA NÃO DAR ERRO
+// ---------------------------------------------------------
+
 const htmlTV = `
 <!DOCTYPE html>
 <html>
@@ -81,7 +84,10 @@ socket.on('sucesso',d=>{ jaPegou=true; document.getElementById('telaCarregando')
 
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><div id="lista"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
-// --- O MOTOR (SERVIDOR) ---
+// ---------------------------------------------------------
+// AQUI COMEÇA O MOTOR (SERVIDOR)
+// ---------------------------------------------------------
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
