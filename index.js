@@ -7,37 +7,24 @@ const QRCode = require('qrcode');
 // 1. CONFIGURAÇÃO DAS LOJAS
 // ==================================================================
 const campanhas = [
-    // 1. OTICA MAX
     { id: 0, loja: 'OticaMax', arquivo: "otica.jpg", modo: 'intro', cor: '#0055aa', ativa: true },
     { id: 1, loja: 'OticaMax', arquivo: "otica50.jpg", modo: 'sorte', cor: '#FFD700', qtd: 20, prefixo: 'MAX', ehSorteio: true },
-
-    // 2. HORTIFRUTI
     { id: 2, loja: 'Hortifruti', arquivo: "hortfrut.jpg", modo: 'intro', cor: '#2E7D32', ativa: true },
     { id: 3, loja: 'Hortifruti', arquivo: "hortfrut50.jpg", modo: 'sorte', cor: '#2E7D32', qtd: 30, prefixo: 'HORT', ehSorteio: true },
-
-    // 3. MAGALU
     { id: 4, loja: 'Magalu', arquivo: "magazineluiza.jpg", modo: 'intro', cor: '#0086FF', ativa: true },
     { id: 5, loja: 'Magalu', arquivo: "magazineluiza50.jpg", modo: 'sorte', cor: '#0086FF', qtd: 15, prefixo: 'MGL', ehSorteio: true },
-
-    // 4. CONSTRUCAO
     { id: 6, loja: 'Construcao', arquivo: "construcao10.jpg", modo: 'intro', cor: '#E65100', ativa: true },
     { id: 7, loja: 'Construcao', arquivo: "construcao.jpg", modo: 'sorte', cor: '#E65100', qtd: 10, prefixo: 'OBRA', ehSorteio: true },
-
-    // 5. CALCADOS
     { id: 8, loja: 'Calcados', arquivo: "calcados10.jpg", modo: 'intro', cor: '#D50000', ativa: true },
     { id: 9, loja: 'Calcados', arquivo: "calcados.jpg", modo: 'sorte', cor: '#D50000', qtd: 40, prefixo: 'PE', ehSorteio: true },
-
-    // 6. FLORICULTURA
     { id: 10, loja: 'Floricultura', arquivo: "floricultura10.jpg", modo: 'intro', cor: '#C2185B', ativa: true },
     { id: 11, loja: 'Floricultura', arquivo: "floricultura-sorte.jpg", modo: 'sorte', cor: '#C2185B', qtd: 15, prefixo: 'FLOR', ehSorteio: true },
-
-    // 7. CDL MOGI DAS CRUZES
-    { id: 12, loja: 'CDL', arquivo: "cdl.jpg", modo: 'intro', cor: '#0054a6', ativa: true }, // Azul CDL
+    { id: 12, loja: 'CDL', arquivo: "cdl.jpg", modo: 'intro', cor: '#0054a6', ativa: true },
     { id: 13, loja: 'CDL', arquivo: "cdl50.jpg", modo: 'sorte', cor: '#0054a6', qtd: 50, prefixo: 'CDL', ehSorteio: true }
 ];
 
 // ==================================================================
-// 2. VISUAL TV (COM CDL NO RODAPÉ)
+// 2. VISUAL TV (COM ALERTA DE GANHADOR)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -45,6 +32,7 @@ const htmlTV = `
 <head>
     <title>TV OFERTAS</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { margin: 0; background: black; overflow: hidden; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; }
         #main-content { flex: 1; display: flex; width: 100%; height: 85vh; }
@@ -66,10 +54,26 @@ const htmlTV = `
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: grayscale(0%); filter: drop-shadow(0 0 5px white); }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
         .pulse { animation: pulse 2s infinite; }
+        
+        /* --- NOVO: OVERLAY DE VITÓRIA GIGANTE --- */
+        #overlayVitoria {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; color: #FFD700;
+        }
+        .animacao-vitoria { animation: zoomIn 0.5s ease-out; }
+        @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
+        .titulo-vitoria { font-size: 5rem; font-weight: 900; text-transform: uppercase; margin: 0; color: #fff; text-shadow: 0 0 20px #FFD700; }
+        .subtitulo-vitoria { font-size: 3rem; margin-top: 20px; color: #FFD700; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
-<body>
+<body onclick="desbloquearAudio()"> <div id="overlayVitoria">
+        <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
+        <h2 class="subtitulo-vitoria" id="textoPremioTV">Ganhou 50% OFF na Ótica Max</h2>
+    </div>
+
     <div id="main-content">
         <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
@@ -98,6 +102,13 @@ const htmlTV = `
     const imgMain = document.getElementById('imgPrincipal'); const bgBlur = document.getElementById('fundoDesfocado'); const sidebar = document.getElementById('sidebar');
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
+    
+    // Som da TV (Mais alto e impactante)
+    const audioTv = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3');
+    audioTv.volume = 1.0; 
+
+    // Hack para permitir audio no Chrome da TV
+    function desbloquearAudio(){ audioTv.play().then(()=>audioTv.pause()); }
 
     socket.on('trocar_slide', d => {
         const caminhoImagem = '/' + d.arquivo;
@@ -117,11 +128,40 @@ const htmlTV = `
 
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
     });
+
     socket.on('atualizar_qtd', d => { qtdDisplay.innerText = d.qtd; });
+
+    // --- LÓGICA DO ALERTA NA TV ---
+    socket.on('aviso_vitoria_tv', d => {
+        // 1. Prepara o texto
+        const overlay = document.getElementById('overlayVitoria');
+        document.getElementById('textoPremioTV').innerText = \`Acabou de ganhar \${d.premio} na \${d.loja}!\`;
+        
+        // 2. Mostra o Overlay
+        overlay.style.display = 'flex';
+        overlay.classList.add('animacao-vitoria');
+
+        // 3. Toca o som e solta confetes
+        audioTv.currentTime = 0;
+        audioTv.play().catch(e => console.log("Clique na tela da TV para ativar o som!"));
+        
+        var duration = 3000;
+        var end = Date.now() + duration;
+        (function frame() {
+            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
+            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
+            if (Date.now() < end) requestAnimationFrame(frame);
+        }());
+
+        // 4. Esconde depois de 6 segundos
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 6000);
+    });
 </script></body></html>`;
 
 // ==================================================================
-// 3. VISUAL CELULAR (VOUCHER IMPRESSO + FESTA E SOM)
+// 3. VISUAL CELULAR (IGUAL AO ANTERIOR)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -170,32 +210,18 @@ const htmlMobile = `
     let jaPegouHoje = false;
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_v3');
-    
-    // Configura o som de vitória
-    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3');
-    audioVitoria.volume = 0.5;
-
+    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioVitoria.volume = 0.5;
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
-    
     socket.on('trocar_slide',d=>{ if(d.modo !== 'intro' && !jaPegouHoje){ document.getElementById('telaCarregando').innerHTML = "<h2>Gerando Voucher...</h2><div class='loader'></div>"; setTimeout(()=>{ socket.emit('resgatar_oferta', d.id); }, 2000); }});
-    
     socket.on('sucesso',d=>{ 
         jaPegouHoje = true; localStorage.setItem('data_resgate_v3', hoje);
         document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaVoucher').style.display='block';
         document.getElementById('lojaNome').innerText = d.loja; document.getElementById('lojaNome').style.color = d.isGold ? '#FFD700' : '#333';
         document.getElementById('nomePremio').innerText = d.produto; document.getElementById('codVoucher').innerText = d.codigo;
         const agora = new Date(); document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
-        
-        // --- EFEITOS DE VITÓRIA (NOVO CÓDIGO) ---
-        // 1. Toca o som (pode precisar de clique anterior do usuário dependendo do navegador)
-        audioVitoria.play().catch(e => console.log("O navegador bloqueou o som automático: " + e));
-        
-        // 2. Solta os confetes
+        audioVitoria.play().catch(e => console.log(e));
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        // Solta mais um pouco depois de meio segundo
         setTimeout(() => confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 } }), 500);
-        // ----------------------------------------
-
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
         else { document.getElementById('topBar').style.background = "#F37021"; }
     });
@@ -207,7 +233,7 @@ const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="wid
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><a href="/baixar-relatorio" style="color:#FFD700">📥 Baixar Excel</a><div id="lista" style="margin-top:20px"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
 // ==================================================================
-// 4. MOTOR DO SERVIDOR
+// 4. MOTOR DO SERVIDOR (COM EVENTO DE AVISO PARA TV)
 // ==================================================================
 const app = express();
 const server = http.createServer(app);
@@ -254,7 +280,17 @@ io.on('connection', (socket) => {
             camp.qtd--; camp.totalResgates++;
             const cod = gerarCodigo(camp.prefixo || 'LOJA');
             historicoVendas.push({ data: new Date().toLocaleDateString('pt-BR'), hora: new Date().toLocaleTimeString('pt-BR'), loja: camp.loja, codigo: cod, premio: premio, status: 'Emitido' });
-            io.emit('atualizar_qtd', camp); socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); io.emit('dados_admin', campanhas);
+            
+            // 1. Avisa o celular que ganhou (privado)
+            socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
+            
+            // 2. Avisa todo mundo para baixar o estoque (público)
+            io.emit('atualizar_qtd', camp);
+            
+            // 3. NOVO: Avisa a TV para fazer festa (público)
+            io.emit('aviso_vitoria_tv', { loja: camp.loja, premio: premio, isGold: isGold });
+            
+            io.emit('dados_admin', campanhas);
         }
     });
     socket.on('validar_cupom', (cod) => {
@@ -268,3 +304,4 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Sistema GOLD rodando na porta ${PORT}`));
+
