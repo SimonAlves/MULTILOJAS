@@ -4,7 +4,7 @@ const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
 // ==================================================================
-// 1. CONFIGURAÇÃO DAS LOJAS (AGORA COM CDL MOGI)
+// 1. CONFIGURAÇÃO DAS LOJAS
 // ==================================================================
 const campanhas = [
     // 1. OTICA MAX
@@ -31,7 +31,7 @@ const campanhas = [
     { id: 10, loja: 'Floricultura', arquivo: "floricultura10.jpg", modo: 'intro', cor: '#C2185B', ativa: true },
     { id: 11, loja: 'Floricultura', arquivo: "floricultura-sorte.jpg", modo: 'sorte', cor: '#C2185B', qtd: 15, prefixo: 'FLOR', ehSorteio: true },
 
-    // 7. CDL MOGI DAS CRUZES (NOVA LOJA)
+    // 7. CDL MOGI DAS CRUZES
     { id: 12, loja: 'CDL', arquivo: "cdl.jpg", modo: 'intro', cor: '#0054a6', ativa: true }, // Azul CDL
     { id: 13, loja: 'CDL', arquivo: "cdl50.jpg", modo: 'sorte', cor: '#0054a6', qtd: 50, prefixo: 'CDL', ehSorteio: true }
 ];
@@ -121,7 +121,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 3. VISUAL CELULAR (VOUCHER IMPRESSO)
+// 3. VISUAL CELULAR (VOUCHER IMPRESSO + FESTA E SOM)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -129,6 +129,7 @@ const htmlMobile = `
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: 'Roboto', sans-serif; text-align: center; padding: 20px; background: #f0f2f5; margin: 0; }
         .success-header { color: #003399; font-size: 1.5rem; font-weight: 900; margin-bottom: 20px; text-transform: uppercase; }
@@ -169,14 +170,32 @@ const htmlMobile = `
     let jaPegouHoje = false;
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_v3');
+    
+    // Configura o som de vitória
+    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3');
+    audioVitoria.volume = 0.5;
+
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
+    
     socket.on('trocar_slide',d=>{ if(d.modo !== 'intro' && !jaPegouHoje){ document.getElementById('telaCarregando').innerHTML = "<h2>Gerando Voucher...</h2><div class='loader'></div>"; setTimeout(()=>{ socket.emit('resgatar_oferta', d.id); }, 2000); }});
+    
     socket.on('sucesso',d=>{ 
         jaPegouHoje = true; localStorage.setItem('data_resgate_v3', hoje);
         document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaVoucher').style.display='block';
         document.getElementById('lojaNome').innerText = d.loja; document.getElementById('lojaNome').style.color = d.isGold ? '#FFD700' : '#333';
         document.getElementById('nomePremio').innerText = d.produto; document.getElementById('codVoucher').innerText = d.codigo;
         const agora = new Date(); document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+        
+        // --- EFEITOS DE VITÓRIA (NOVO CÓDIGO) ---
+        // 1. Toca o som (pode precisar de clique anterior do usuário dependendo do navegador)
+        audioVitoria.play().catch(e => console.log("O navegador bloqueou o som automático: " + e));
+        
+        // 2. Solta os confetes
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        // Solta mais um pouco depois de meio segundo
+        setTimeout(() => confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 } }), 500);
+        // ----------------------------------------
+
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
         else { document.getElementById('topBar').style.background = "#F37021"; }
     });
