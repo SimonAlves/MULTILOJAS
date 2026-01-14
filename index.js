@@ -3,29 +3,10 @@ const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
-// ==================================================================
-// 1. CONFIGURAÇÃO DAS LOJAS
-// ==================================================================
-const campanhas = [
-    { id: 0, loja: 'OticaMax', arquivo: "otica.jpg", modo: 'intro', cor: '#0055aa', ativa: true },
-    { id: 1, loja: 'OticaMax', arquivo: "otica50.jpg", modo: 'sorte', cor: '#FFD700', qtd: 20, prefixo: 'MAX', ehSorteio: true },
-    { id: 2, loja: 'Hortifruti', arquivo: "hortfrut.jpg", modo: 'intro', cor: '#2E7D32', ativa: true },
-    { id: 3, loja: 'Hortifruti', arquivo: "hortfrut50.jpg", modo: 'sorte', cor: '#2E7D32', qtd: 30, prefixo: 'HORT', ehSorteio: true },
-    { id: 4, loja: 'Magalu', arquivo: "magazineluiza.jpg", modo: 'intro', cor: '#0086FF', ativa: true },
-    { id: 5, loja: 'Magalu', arquivo: "magazineluiza50.jpg", modo: 'sorte', cor: '#0086FF', qtd: 15, prefixo: 'MGL', ehSorteio: true },
-    { id: 6, loja: 'Construcao', arquivo: "construcao10.jpg", modo: 'intro', cor: '#E65100', ativa: true },
-    { id: 7, loja: 'Construcao', arquivo: "construcao.jpg", modo: 'sorte', cor: '#E65100', qtd: 10, prefixo: 'OBRA', ehSorteio: true },
-    { id: 8, loja: 'Calcados', arquivo: "calcados10.jpg", modo: 'intro', cor: '#D50000', ativa: true },
-    { id: 9, loja: 'Calcados', arquivo: "calcados.jpg", modo: 'sorte', cor: '#D50000', qtd: 40, prefixo: 'PE', ehSorteio: true },
-    { id: 10, loja: 'Floricultura', arquivo: "floricultura10.jpg", modo: 'intro', cor: '#C2185B', ativa: true },
-    { id: 11, loja: 'Floricultura', arquivo: "floricultura-sorte.jpg", modo: 'sorte', cor: '#C2185B', qtd: 15, prefixo: 'FLOR', ehSorteio: true },
-    { id: 12, loja: 'CDL', arquivo: "cdl.jpg", modo: 'intro', cor: '#0054a6', ativa: true },
-    { id: 13, loja: 'CDL', arquivo: "cdl50.jpg", modo: 'sorte', cor: '#0054a6', qtd: 50, prefixo: 'CDL', ehSorteio: true }
-];
+// IMPORTANTE: Aqui ele puxa as configurações do seu arquivo config.js
+const campanhas = require('./config');
 
-// ==================================================================
-// 2. VISUAL TV (COM SOM, CONFETES E ALERTA)
-// ==================================================================
+// 1. HTML TV (Som Local + Alerta)
 const htmlTV = `
 <!DOCTYPE html>
 <html>
@@ -48,19 +29,12 @@ const htmlTV = `
         .cta-text { color: #FFD700; font-weight: 900; font-size: 1.4rem; text-transform: uppercase; margin-top: 5px; }
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
-        
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
         .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; }
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: grayscale(0%); filter: drop-shadow(0 0 5px white); }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
         .pulse { animation: pulse 2s infinite; }
-        
-        #overlayVitoria {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 9999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; color: #FFD700;
-        }
+        #overlayVitoria { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FFD700; }
         .animacao-vitoria { animation: zoomIn 0.5s ease-out; }
         @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
         .titulo-vitoria { font-size: 5rem; font-weight: 900; text-transform: uppercase; margin: 0; color: #fff; text-shadow: 0 0 20px #FFD700; }
@@ -72,7 +46,6 @@ const htmlTV = `
         <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
         <h2 class="subtitulo-vitoria" id="textoPremioTV">...</h2>
     </div>
-
     <div id="main-content">
         <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
@@ -85,13 +58,9 @@ const htmlTV = `
         </div>
     </div>
     <div id="footer">
-        <div class="patrocinador-item" id="brand-OticaMax"><span class="patrocinador-nome" style="color:#2196F3">Ótica Max</span></div>
-        <div class="patrocinador-item" id="brand-Hortifruti"><span class="patrocinador-nome" style="color:#4CAF50">Hortifruti</span></div>
-        <div class="patrocinador-item" id="brand-Magalu"><span class="patrocinador-nome" style="color:#0086FF">Magalu</span></div>
-        <div class="patrocinador-item" id="brand-Construcao"><span class="patrocinador-nome" style="color:#FF9800">Construção</span></div>
-        <div class="patrocinador-item" id="brand-Calcados"><span class="patrocinador-nome" style="color:#F44336">Calçados</span></div>
-        <div class="patrocinador-item" id="brand-Floricultura"><span class="patrocinador-nome" style="color:#E91E63">Floricultura</span></div>
-        <div class="patrocinador-item" id="brand-CDL"><span class="patrocinador-nome" style="color:#0054a6">CDL Mogi</span></div>
+        ${campanhas.filter(c => c.modo === 'intro').map(c => 
+            `<div class="patrocinador-item" id="brand-${c.loja}"><span class="patrocinador-nome" style="color:${c.cor}">${c.loja}</span></div>`
+        ).join('')}
     </div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -99,7 +68,11 @@ const htmlTV = `
     const imgMain = document.getElementById('imgPrincipal'); const bgBlur = document.getElementById('fundoDesfocado'); const sidebar = document.getElementById('sidebar');
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
-    const audioTv = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioTv.volume = 1.0; 
+    
+    // USANDO SOM LOCAL
+    const audioTv = new Audio('/vitoria.mp3'); 
+    audioTv.volume = 1.0; 
+    
     function desbloquearAudio(){ audioTv.play().then(()=>audioTv.pause()); }
 
     socket.on('trocar_slide', d => {
@@ -124,9 +97,7 @@ const htmlTV = `
     });
 </script></body></html>`;
 
-// ==================================================================
-// 3. VISUAL CELULAR (COM TRAVA E SOM)
-// ==================================================================
+// 2. HTML MOBILE (Formulário + Som Local)
 const htmlMobile = `
 <!DOCTYPE html>
 <html>
@@ -149,11 +120,23 @@ const htmlMobile = `
         .btn-print:active { transform: scale(0.98); }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #333; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+        #formCadastro { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
+        .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; }
         @media print { body { background: white; padding: 0; } .btn-print, .no-print { display: none; } .ticket-card { box-shadow: none; border: 1px solid #ccc; } .success-header { color: black; } }
     </style>
 </head>
 <body>
-    <div id="telaCarregando"><br><h2>Conectando...</h2><div class="loader"></div><p>Aguarde a oferta aparecer na TV</p></div>
+    <div id="telaCarregando"><br><h2>Aguardando Sorteio...</h2><div class="loader"></div><p>Olhe para a TV!</p></div>
+    <div id="formCadastro">
+        <h2 style="color:#333;">🎉 Quase lá!</h2>
+        <p>Para liberar seu prêmio, preencha:</p>
+        <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
+        <input type="tel" id="cZap" class="inp-dados" placeholder="Seu WhatsApp (com DDD)">
+        <input type="email" id="cEmail" class="inp-dados" placeholder="Seu E-mail">
+        <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button>
+        <p style="font-size:0.7rem; color:#999; margin-top:10px;">Seus dados estão seguros. Lei LGPD.</p>
+    </div>
     <div id="telaBloqueio" style="display:none; color:#d9534f;"><h1>🚫 Ops!</h1><p>Você já pegou um cupom hoje.<br>Volte amanhã!</p></div>
     <div id="telaVoucher" style="display:none">
         <div class="success-header">SUCESSO! 🎉</div>
@@ -172,33 +155,59 @@ const htmlMobile = `
 <script>
     const socket=io();
     let jaPegouHoje = false;
+    let campanhaAtualId = null; 
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
-    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioVitoria.volume = 0.5;
-    socket.on('trocar_slide',d=>{ if(d.modo !== 'intro' && !jaPegouHoje){ document.getElementById('telaCarregando').innerHTML = "<h2>Gerando Voucher...</h2><div class='loader'></div>"; setTimeout(()=>{ socket.emit('resgatar_oferta', d.id); }, 2000); }});
-    socket.on('sucesso',d=>{ 
+    
+    // USANDO SOM LOCAL
+    const audioVitoria = new Audio('/vitoria.mp3'); 
+    audioVitoria.volume = 0.5;
+
+    socket.on('trocar_slide', d => { 
+        if(d.modo !== 'intro' && !jaPegouHoje){ 
+            campanhaAtualId = d.id; 
+            document.getElementById('telaCarregando').style.display = 'none';
+            document.getElementById('formCadastro').style.display = 'block';
+        } else if (d.modo === 'intro' && !jaPegouHoje) {
+             document.getElementById('telaCarregando').style.display = 'block';
+             document.getElementById('formCadastro').style.display = 'none';
+             document.getElementById('telaVoucher').style.display = 'none';
+        }
+    });
+
+    function enviarCadastro() {
+        const nome = document.getElementById('cNome').value;
+        const zap = document.getElementById('cZap').value;
+        const email = document.getElementById('cEmail').value;
+        if(!nome || !zap || !email) { alert("Por favor, preencha todos os campos!"); return; }
+        document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
+        socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email } });
+    }
+
+    socket.on('sucesso', d => { 
         jaPegouHoje = true; localStorage.setItem('data_resgate_ferrari', hoje);
-        document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaVoucher').style.display='block';
-        document.getElementById('lojaNome').innerText = d.loja; document.getElementById('lojaNome').style.color = d.isGold ? '#FFD700' : '#333';
-        document.getElementById('nomePremio').innerText = d.produto; document.getElementById('codVoucher').innerText = d.codigo;
+        document.getElementById('formCadastro').style.display='none'; 
+        document.getElementById('telaVoucher').style.display='block'; 
+        document.getElementById('lojaNome').innerText = d.loja; 
+        document.getElementById('lojaNome').style.color = d.isGold ? '#FFD700' : '#333';
+        document.getElementById('nomePremio').innerText = d.produto; 
+        document.getElementById('codVoucher').innerText = d.codigo;
         const agora = new Date(); document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
+        
         audioVitoria.play().catch(e=>console.log(e));
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         setTimeout(() => confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 } }), 500);
+        
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
         else { document.getElementById('topBar').style.background = "#F37021"; }
     });
 </script></body></html>`;
 
-// ==================================================================
-// 4. PAINEL DO CAIXA (VALIDADOR)
-// ==================================================================
+// 3. HTML CAIXA
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
-// ==================================================================
-// 5. PAINEL ADMIN (AGORA COM CONTADOR DE BAIXAS EM TEMPO REAL)
-// ==================================================================
+// 4. HTML ADMIN (Com monitoramento de estoque e baixas)
 const htmlAdmin = `
 <!DOCTYPE html>
 <html>
@@ -216,7 +225,7 @@ const htmlAdmin = `
 </head>
 <body>
     <h1>Painel Admin ⚙️</h1>
-    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo</a>
+    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo (Com Leads)</a>
     <div id="lista">Carregando dados...</div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -224,7 +233,7 @@ const htmlAdmin = `
         socket.on('dados_admin', d => {
             let html="";
             d.forEach((i) => {
-                if(i.ehSorteio) { // Mostra só as campanhas de sorteio para não poluir
+                if(i.ehSorteio) {
                     html += \`
                     <div class="card" style="border-left-color: \${i.cor}">
                         <div class="loja-title">\${i.loja}</div>
@@ -242,7 +251,7 @@ const htmlAdmin = `
 </html>`;
 
 // ==================================================================
-// 6. MOTOR DO SERVIDOR
+// MOTOR DO SERVIDOR
 // ==================================================================
 const app = express();
 const server = http.createServer(app);
@@ -273,17 +282,18 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// EXCEL
+// EXCEL COM LEADS
 app.get('/baixar-relatorio', (req, res) => {
-    let csv = "\uFEFFDATA,HORA,LOJA,CODIGO,PREMIO,STATUS\n";
-    historicoVendas.forEach(h => { csv += `${h.data},${h.hora},${h.loja},${h.codigo},${h.premio},${h.status}\n`; });
+    let csv = "\uFEFFDATA,HORA,LOJA,CODIGO,PREMIO,STATUS,NOME,WHATSAPP,EMAIL\n";
+    historicoVendas.forEach(h => { 
+        const nomeLimpo = h.clienteNome ? h.clienteNome.replace(/,/g, '') : '';
+        csv += `${h.data},${h.hora},${h.loja},${h.codigo},${h.premio},${h.status},${nomeLimpo},${h.clienteZap || ''},${h.clienteEmail || ''}\n`; 
+    });
     res.header('Content-Type', 'text/csv; charset=utf-8'); res.attachment('relatorio_vendas.csv'); res.send(csv);
 });
 
-// FUNÇÃO HELPER PARA CALCULAR BAIXAS
 const getDadosComBaixas = () => {
     return campanhas.map(c => {
-        // Conta quantos 'Usado' existem para esta loja
         const qtdBaixas = historicoVendas.filter(h => h.loja === c.loja && h.status === 'Usado').length;
         return { ...c, baixas: qtdBaixas };
     });
@@ -291,11 +301,13 @@ const getDadosComBaixas = () => {
 
 io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
-    
-    // Envia dados iniciais já com as baixas calculadas
     socket.emit('dados_admin', getDadosComBaixas());
     
-    socket.on('resgatar_oferta', (id) => {
+    // RESGATE DO CLIENTE
+    socket.on('resgatar_oferta', (dadosRecebidos) => {
+        const id = dadosRecebidos.id;
+        const dadosCliente = dadosRecebidos.cliente || {}; 
+
         let camp = campanhas[id];
         if (camp && camp.qtd > 0) {
             const sorte = Math.random() * 100;
@@ -303,17 +315,27 @@ io.on('connection', (socket) => {
             if (sorte > 95) { premio = "50% OFF"; isGold = true; }
             camp.qtd--; camp.totalResgates++;
             const cod = gerarCodigo(camp.prefixo || 'LOJA');
-            historicoVendas.push({ data: new Date().toLocaleDateString('pt-BR'), hora: new Date().toLocaleTimeString('pt-BR'), loja: camp.loja, codigo: cod, premio: premio, status: 'Emitido' });
+            
+            historicoVendas.push({ 
+                data: new Date().toLocaleDateString('pt-BR'), 
+                hora: new Date().toLocaleTimeString('pt-BR'), 
+                loja: camp.loja, 
+                codigo: cod, 
+                premio: premio, 
+                status: 'Emitido',
+                clienteNome: dadosCliente.nome,
+                clienteZap: dadosCliente.zap,
+                clienteEmail: dadosCliente.email
+            });
             
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
             io.emit('atualizar_qtd', camp);
             io.emit('aviso_vitoria_tv', { loja: camp.loja, premio: premio, isGold: isGold });
-            
-            // Atualiza Admin com novas baixas (se houver) e novo estoque
             io.emit('dados_admin', getDadosComBaixas());
         }
     });
 
+    // CAIXA VALIDAÇÃO
     socket.on('validar_cupom', (cod) => {
         const cupom = historicoVendas.find(h => h.codigo === cod.toUpperCase());
         if (!cupom) {
@@ -323,8 +345,6 @@ io.on('connection', (socket) => {
         } else { 
             cupom.status = 'Usado'; 
             socket.emit('resultado_validacao', { sucesso: true, msg: "✅ VÁLIDO!", detalhe: `${cupom.premio} - ${cupom.loja}` });
-            
-            // IMPORTANTE: Atualiza o Admin em tempo real quando dá baixa
             io.emit('dados_admin', getDadosComBaixas());
         }
     });
@@ -333,4 +353,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sistema FERRARI rodando na porta ${PORT}`));
+server.listen(PORT, () => console.log(`Sistema FERRARI + LEADS + SOM OFFLINE rodando na porta ${PORT}`));
