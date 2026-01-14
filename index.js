@@ -24,7 +24,7 @@ const campanhas = [
 ];
 
 // ==================================================================
-// 2. VISUAL TV (COM ALERTA DE GANHADOR + FESTA)
+// 2. VISUAL TV (COM SOM, CONFETES E ALERTA)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -57,7 +57,7 @@ const htmlTV = `
         
         #overlayVitoria {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 9999;
+            background: rgba(0,0,0,0.95); z-index: 9999;
             display: none; flex-direction: column; align-items: center; justify-content: center;
             text-align: center; color: #FFD700;
         }
@@ -72,6 +72,7 @@ const htmlTV = `
         <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
         <h2 class="subtitulo-vitoria" id="textoPremioTV">...</h2>
     </div>
+
     <div id="main-content">
         <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
@@ -100,11 +101,12 @@ const htmlTV = `
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
     const audioTv = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioTv.volume = 1.0; 
     function desbloquearAudio(){ audioTv.play().then(()=>audioTv.pause()); }
+
     socket.on('trocar_slide', d => {
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
-        if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); } 
+        if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
         else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
         const marcaEl = document.getElementById('brand-' + d.loja); if(marcaEl) marcaEl.classList.add('ativo');
@@ -115,7 +117,7 @@ const htmlTV = `
         const overlay = document.getElementById('overlayVitoria');
         document.getElementById('textoPremioTV').innerText = \`Acabou de ganhar \${d.premio} na \${d.loja}!\`;
         overlay.style.display = 'flex'; overlay.classList.add('animacao-vitoria');
-        audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Clique na TV!"));
+        audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Precisa clicar na TV para ativar som"));
         var duration = 3000; var end = Date.now() + duration;
         (function frame() { confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } }); confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } }); if (Date.now() < end) requestAnimationFrame(frame); }());
         setTimeout(() => { overlay.style.display = 'none'; }, 6000);
@@ -123,7 +125,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 3. VISUAL CELULAR
+// 3. VISUAL CELULAR (COM TRAVA E SOM)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -171,17 +173,17 @@ const htmlMobile = `
     const socket=io();
     let jaPegouHoje = false;
     const hoje = new Date().toLocaleDateString('pt-BR');
-    const ultimoResgate = localStorage.getItem('data_resgate_v3');
-    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioVitoria.volume = 0.5;
+    const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
+    const audioVitoria = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioVitoria.volume = 0.5;
     socket.on('trocar_slide',d=>{ if(d.modo !== 'intro' && !jaPegouHoje){ document.getElementById('telaCarregando').innerHTML = "<h2>Gerando Voucher...</h2><div class='loader'></div>"; setTimeout(()=>{ socket.emit('resgatar_oferta', d.id); }, 2000); }});
     socket.on('sucesso',d=>{ 
-        jaPegouHoje = true; localStorage.setItem('data_resgate_v3', hoje);
+        jaPegouHoje = true; localStorage.setItem('data_resgate_ferrari', hoje);
         document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaVoucher').style.display='block';
         document.getElementById('lojaNome').innerText = d.loja; document.getElementById('lojaNome').style.color = d.isGold ? '#FFD700' : '#333';
         document.getElementById('nomePremio').innerText = d.produto; document.getElementById('codVoucher').innerText = d.codigo;
         const agora = new Date(); document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
-        audioVitoria.play().catch(e => console.log(e));
+        audioVitoria.play().catch(e=>console.log(e));
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         setTimeout(() => confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 } }), 500);
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
@@ -189,13 +191,58 @@ const htmlMobile = `
     });
 </script></body></html>`;
 
-// --- OUTROS TEMPLATES ---
+// ==================================================================
+// 4. PAINEL DO CAIXA (VALIDADOR)
+// ==================================================================
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
-const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><a href="/baixar-relatorio" style="color:#FFD700">📥 Baixar Excel</a><div id="lista" style="margin-top:20px"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
+// ==================================================================
+// 5. PAINEL ADMIN (AGORA COM CONTADOR DE BAIXAS EM TEMPO REAL)
+// ==================================================================
+const htmlAdmin = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Painel Admin</title>
+    <style>
+        body { background: #222; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+        .card { background: #333; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #555; }
+        .btn-down { background-color: #FFD700; color: #000; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+        .estoque { background: #0086FF; color: white; }
+        .baixas { background: #28a745; color: white; }
+        .loja-title { font-size: 1.2em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Painel Admin ⚙️</h1>
+    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo</a>
+    <div id="lista">Carregando dados...</div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket=io();
+        socket.on('dados_admin', d => {
+            let html="";
+            d.forEach((i) => {
+                if(i.ehSorteio) { // Mostra só as campanhas de sorteio para não poluir
+                    html += \`
+                    <div class="card" style="border-left-color: \${i.cor}">
+                        <div class="loja-title">\${i.loja}</div>
+                        <div>
+                            <span class="badge estoque">📦 Restam: \${i.qtd}</span>
+                            <span class="badge baixas" style="margin-left:10px;">📉 Usados: \${i.baixas}</span>
+                        </div>
+                    </div>\`;
+                }
+            });
+            document.getElementById('lista').innerHTML = html;
+        })
+    </script>
+</body>
+</html>`;
 
 // ==================================================================
-// 4. MOTOR DO SERVIDOR
+// 6. MOTOR DO SERVIDOR
 // ==================================================================
 const app = express();
 const server = http.createServer(app);
@@ -218,21 +265,36 @@ function gerarCodigo(prefixo) {
     return `${prefixo}-${result}`;
 }
 
+// ROTAS
 app.get('/tv', (req, res) => res.send(htmlTV));
 app.get('/mobile', (req, res) => res.send(htmlMobile));
 app.get('/admin', (req, res) => res.send(htmlAdmin));
 app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
+
+// EXCEL
 app.get('/baixar-relatorio', (req, res) => {
     let csv = "\uFEFFDATA,HORA,LOJA,CODIGO,PREMIO,STATUS\n";
     historicoVendas.forEach(h => { csv += `${h.data},${h.hora},${h.loja},${h.codigo},${h.premio},${h.status}\n`; });
     res.header('Content-Type', 'text/csv; charset=utf-8'); res.attachment('relatorio_vendas.csv'); res.send(csv);
 });
 
+// FUNÇÃO HELPER PARA CALCULAR BAIXAS
+const getDadosComBaixas = () => {
+    return campanhas.map(c => {
+        // Conta quantos 'Usado' existem para esta loja
+        const qtdBaixas = historicoVendas.filter(h => h.loja === c.loja && h.status === 'Usado').length;
+        return { ...c, baixas: qtdBaixas };
+    });
+};
+
 io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
-    socket.emit('dados_admin', campanhas);
+    
+    // Envia dados iniciais já com as baixas calculadas
+    socket.emit('dados_admin', getDadosComBaixas());
+    
     socket.on('resgatar_oferta', (id) => {
         let camp = campanhas[id];
         if (camp && camp.qtd > 0) {
@@ -246,17 +308,29 @@ io.on('connection', (socket) => {
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
             io.emit('atualizar_qtd', camp);
             io.emit('aviso_vitoria_tv', { loja: camp.loja, premio: premio, isGold: isGold });
-            io.emit('dados_admin', campanhas);
+            
+            // Atualiza Admin com novas baixas (se houver) e novo estoque
+            io.emit('dados_admin', getDadosComBaixas());
         }
     });
+
     socket.on('validar_cupom', (cod) => {
         const cupom = historicoVendas.find(h => h.codigo === cod.toUpperCase());
-        if (!cupom) socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" });
-        else if (cupom.status === 'Usado') socket.emit('resultado_validacao', { sucesso: false, msg: "Já Utilizado!" });
-        else { cupom.status = 'Usado'; socket.emit('resultado_validacao', { sucesso: true, msg: "✅ VÁLIDO!", detalhe: `${cupom.premio} - ${cupom.loja}` }); }
+        if (!cupom) {
+            socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" });
+        } else if (cupom.status === 'Usado') {
+            socket.emit('resultado_validacao', { sucesso: false, msg: "Já Utilizado!" });
+        } else { 
+            cupom.status = 'Usado'; 
+            socket.emit('resultado_validacao', { sucesso: true, msg: "✅ VÁLIDO!", detalhe: `${cupom.premio} - ${cupom.loja}` });
+            
+            // IMPORTANTE: Atualiza o Admin em tempo real quando dá baixa
+            io.emit('dados_admin', getDadosComBaixas());
+        }
     });
-    socket.on('admin_update', (d) => { campanhas[d.id].qtd = parseInt(d.qtd); io.emit('dados_admin', campanhas); });
+
+    socket.on('admin_update', (d) => { campanhas[d.id].qtd = parseInt(d.qtd); io.emit('dados_admin', getDadosComBaixas()); });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sistema GOLD rodando na porta ${PORT}`));
+server.listen(PORT, () => console.log(`Sistema FERRARI rodando na porta ${PORT}`));
