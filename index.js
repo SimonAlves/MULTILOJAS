@@ -24,7 +24,7 @@ const campanhas = [
 ];
 
 // ==================================================================
-// 2. VISUAL TV (COM ALERTA DE GANHADOR)
+// 2. VISUAL TV (COM ALERTA DE GANHADOR + FESTA)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -195,7 +195,7 @@ const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="wid
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><a href="/baixar-relatorio" style="color:#FFD700">📥 Baixar Excel</a><div id="lista" style="margin-top:20px"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
 // ==================================================================
-// 4. MOTOR DO SERVIDOR (COM ROTA PING PARA CRON-JOB)
+// 4. MOTOR DO SERVIDOR
 // ==================================================================
 const app = express();
 const server = http.createServer(app);
@@ -203,13 +203,6 @@ const io = socketIo(server);
 
 app.use(express.static(__dirname));
 app.use(express.static('public')); 
-
-// --- NOVO: ROTA PING (PARA MANTER ACORDADO) ---
-app.get('/ping', (req, res) => {
-    console.log('Recebi um Ping do Cron-Job para não dormir!');
-    res.send('Pong! Estou acordado.');
-});
-// ----------------------------------------------
 
 let historicoVendas = []; 
 let slideAtual = 0;
