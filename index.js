@@ -55,7 +55,6 @@ const htmlTV = `
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
         .pulse { animation: pulse 2s infinite; }
         
-        /* --- NOVO: OVERLAY DE VITÓRIA GIGANTE --- */
         #overlayVitoria {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 9999;
@@ -66,14 +65,13 @@ const htmlTV = `
         @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
         .titulo-vitoria { font-size: 5rem; font-weight: 900; text-transform: uppercase; margin: 0; color: #fff; text-shadow: 0 0 20px #FFD700; }
         .subtitulo-vitoria { font-size: 3rem; margin-top: 20px; color: #FFD700; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
-<body onclick="desbloquearAudio()"> <div id="overlayVitoria">
+<body onclick="desbloquearAudio()">
+    <div id="overlayVitoria">
         <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
-        <h2 class="subtitulo-vitoria" id="textoPremioTV">Ganhou 50% OFF na Ótica Max</h2>
+        <h2 class="subtitulo-vitoria" id="textoPremioTV">...</h2>
     </div>
-
     <div id="main-content">
         <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
@@ -85,7 +83,6 @@ const htmlTV = `
             <div class="counter-area" id="counterBox"><p class="counter-label" style="text-transform:uppercase; font-size:0.9rem;">Restam Apenas:</p><div id="qtdDisplay" class="counter-number">--</div></div>
         </div>
     </div>
-    
     <div id="footer">
         <div class="patrocinador-item" id="brand-OticaMax"><span class="patrocinador-nome" style="color:#2196F3">Ótica Max</span></div>
         <div class="patrocinador-item" id="brand-Hortifruti"><span class="patrocinador-nome" style="color:#4CAF50">Hortifruti</span></div>
@@ -95,73 +92,38 @@ const htmlTV = `
         <div class="patrocinador-item" id="brand-Floricultura"><span class="patrocinador-nome" style="color:#E91E63">Floricultura</span></div>
         <div class="patrocinador-item" id="brand-CDL"><span class="patrocinador-nome" style="color:#0054a6">CDL Mogi</span></div>
     </div>
-
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
     const imgMain = document.getElementById('imgPrincipal'); const bgBlur = document.getElementById('fundoDesfocado'); const sidebar = document.getElementById('sidebar');
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
-    
-    // Som da TV (Mais alto e impactante)
-    const audioTv = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3');
-    audioTv.volume = 1.0; 
-
-    // Hack para permitir audio no Chrome da TV
+    const audioTv = new Audio('https://www.myinstants.com/media/sounds/tada-fanfare-a.mp3'); audioTv.volume = 1.0; 
     function desbloquearAudio(){ audioTv.play().then(()=>audioTv.pause()); }
-
     socket.on('trocar_slide', d => {
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
-        
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
-        
-        if(d.modo === 'intro') {
-            slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse');
-        } else {
-            slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse');
-        }
-
+        if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); } 
+        else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
-        const marcaEl = document.getElementById('brand-' + d.loja);
-        if(marcaEl) marcaEl.classList.add('ativo');
-
+        const marcaEl = document.getElementById('brand-' + d.loja); if(marcaEl) marcaEl.classList.add('ativo');
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
     });
-
     socket.on('atualizar_qtd', d => { qtdDisplay.innerText = d.qtd; });
-
-    // --- LÓGICA DO ALERTA NA TV ---
     socket.on('aviso_vitoria_tv', d => {
-        // 1. Prepara o texto
         const overlay = document.getElementById('overlayVitoria');
         document.getElementById('textoPremioTV').innerText = \`Acabou de ganhar \${d.premio} na \${d.loja}!\`;
-        
-        // 2. Mostra o Overlay
-        overlay.style.display = 'flex';
-        overlay.classList.add('animacao-vitoria');
-
-        // 3. Toca o som e solta confetes
-        audioTv.currentTime = 0;
-        audioTv.play().catch(e => console.log("Clique na tela da TV para ativar o som!"));
-        
-        var duration = 3000;
-        var end = Date.now() + duration;
-        (function frame() {
-            confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } });
-            confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } });
-            if (Date.now() < end) requestAnimationFrame(frame);
-        }());
-
-        // 4. Esconde depois de 6 segundos
-        setTimeout(() => {
-            overlay.style.display = 'none';
-        }, 6000);
+        overlay.style.display = 'flex'; overlay.classList.add('animacao-vitoria');
+        audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Clique na TV!"));
+        var duration = 3000; var end = Date.now() + duration;
+        (function frame() { confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } }); confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } }); if (Date.now() < end) requestAnimationFrame(frame); }());
+        setTimeout(() => { overlay.style.display = 'none'; }, 6000);
     });
 </script></body></html>`;
 
 // ==================================================================
-// 3. VISUAL CELULAR (IGUAL AO ANTERIOR)
+// 3. VISUAL CELULAR
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -233,7 +195,7 @@ const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="wid
 const htmlAdmin = `<!DOCTYPE html><html><body style="background:#222;color:white;font-family:Arial;padding:20px;"><h1>Painel Admin</h1><a href="/baixar-relatorio" style="color:#FFD700">📥 Baixar Excel</a><div id="lista" style="margin-top:20px"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let html="";d.forEach((i,x)=>{html+=\`<div style='border-bottom:1px solid #555;padding:10px;opacity:\${i.ativa?1:0.5}'><b>\${i.loja} (\${i.modo})</b> - Qtd: \${i.qtd}</div>\`});document.getElementById('lista').innerHTML=html;})</script></body></html>`;
 
 // ==================================================================
-// 4. MOTOR DO SERVIDOR (COM EVENTO DE AVISO PARA TV)
+// 4. MOTOR DO SERVIDOR (COM ROTA PING PARA CRON-JOB)
 // ==================================================================
 const app = express();
 const server = http.createServer(app);
@@ -241,6 +203,13 @@ const io = socketIo(server);
 
 app.use(express.static(__dirname));
 app.use(express.static('public')); 
+
+// --- NOVO: ROTA PING (PARA MANTER ACORDADO) ---
+app.get('/ping', (req, res) => {
+    console.log('Recebi um Ping do Cron-Job para não dormir!');
+    res.send('Pong! Estou acordado.');
+});
+// ----------------------------------------------
 
 let historicoVendas = []; 
 let slideAtual = 0;
@@ -281,15 +250,9 @@ io.on('connection', (socket) => {
             const cod = gerarCodigo(camp.prefixo || 'LOJA');
             historicoVendas.push({ data: new Date().toLocaleDateString('pt-BR'), hora: new Date().toLocaleTimeString('pt-BR'), loja: camp.loja, codigo: cod, premio: premio, status: 'Emitido' });
             
-            // 1. Avisa o celular que ganhou (privado)
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
-            
-            // 2. Avisa todo mundo para baixar o estoque (público)
             io.emit('atualizar_qtd', camp);
-            
-            // 3. NOVO: Avisa a TV para fazer festa (público)
             io.emit('aviso_vitoria_tv', { loja: camp.loja, premio: premio, isGold: isGold });
-            
             io.emit('dados_admin', campanhas);
         }
     });
@@ -304,4 +267,3 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Sistema GOLD rodando na porta ${PORT}`));
-
