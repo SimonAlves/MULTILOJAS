@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (RODAPÉ CORRIGIDO + SOM AUTOMÁTICO)
+// 1. HTML TV (SOM AUTOMÁTICO + RODAPÉ INTELIGENTE)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -129,7 +129,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (COM CORREÇÃO DE ESPAÇOS EM BRANCO)
+// 2. HTML MOBILE (VALIDAÇÃO CPF OFICIAL + EMAIL FLEXÍVEL)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -149,14 +149,10 @@ const htmlMobile = `
         
         #formCadastro { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
         
-        /* INPUTS MELHORADOS */
         .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; outline: none; transition: 0.3s; }
         .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0,51,153,0.3); }
-        
         .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; transition: 0.3s; }
         .btn-enviar:active { transform: scale(0.95); }
-        
-        /* MENSAGEM DE ERRO */
         .erro-msg { color: #d9534f; font-size: 0.85rem; font-weight: bold; text-align: left; width: 90%; margin: -5px auto 10px auto; display: none; }
     </style>
 </head>
@@ -169,11 +165,11 @@ const htmlMobile = `
         
         <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
         
-        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" oninput="mascaraCPF(this)" maxlength="14">
-        <div id="msgErroCpf" class="erro-msg">CPF Inválido! Verifique os números.</div>
+        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" oninput="mascaraCPF(this)" maxlength="16">
+        <div id="msgErroCpf" class="erro-msg">CPF Inválido!</div>
 
-        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" oninput="mascaraZap(this)" maxlength="15">
-        <div id="msgErroZap" class="erro-msg">Número incompleto ou sem o 9 na frente!</div>
+        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" oninput="mascaraZap(this)" maxlength="16">
+        <div id="msgErroZap" class="erro-msg">Número inválido!</div>
 
         <input type="email" id="cEmail" class="inp-dados" placeholder="Seu E-mail">
         <div id="msgErroEmail" class="erro-msg">E-mail inválido!</div>
@@ -223,28 +219,17 @@ const htmlMobile = `
     
     function mascaraZap(i){
         let v = i.value.replace(/\D/g,"");
-        // Formata celular: (11) 98888-8888
         v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); 
         v=v.replace(/(\d)(\d{4})$/,"$1-$2");
         i.value = v;
         document.getElementById('msgErroZap').style.display = 'none';
     }
 
-    // --- VALIDAÇÕES BLINDADAS COM TRIM ---
-    
-    function validarCelularReal(cel) {
-        const limpo = cel.replace(/\D/g, ''); // Remove formatação
-        // Regra 1: 11 dígitos
-        if (limpo.length !== 11) return false;
-        // Regra 2: O primeiro dígito após DDD deve ser 9
-        if (limpo[2] !== '9') return false;
-        return true;
-    }
-
+    // --- VALIDAÇÃO CPF REAL (ALGORITMO RECEITA FEDERAL) ---
     function validarCPFReal(cpf) {
         cpf = cpf.replace(/[^\d]+/g,'');
         if(cpf == '') return false;
-        // Elimina CPFs invalidos conhecidos
+        // Elimina invalidos conhecidos
         if (cpf.length != 11 || 
             cpf == "00000000000" || cpf == "11111111111" || 
             cpf == "22222222222" || cpf == "33333333333" || 
@@ -252,24 +237,37 @@ const htmlMobile = `
             cpf == "66666666666" || cpf == "77777777777" || 
             cpf == "88888888888" || cpf == "99999999999")
                 return false;
-        // Valida 1o digito
-        let add = 0;
-        for (let i=0; i < 9; i ++) add += parseInt(cpf.charAt(i)) * (10 - i);
-        let rev = 11 - (add % 11);
-        if (rev == 10 || rev == 11) rev = 0;
-        if (rev != parseInt(cpf.charAt(9))) return false;
-        // Valida 2o digito
-        add = 0;
-        for (let i = 0; i < 10; i ++) add += parseInt(cpf.charAt(i)) * (11 - i);
-        rev = 11 - (add % 11);
-        if (rev == 10 || rev == 11) rev = 0;
-        if (rev != parseInt(cpf.charAt(10))) return false;
+        
+        let soma = 0;
+        let resto;
+        for (let i = 1; i <= 9; i++) 
+            soma = soma + parseInt(cpf.substring(i-1, i)) * (11 - i);
+        resto = (soma * 10) % 11;
+        
+        if ((resto == 10) || (resto == 11))  resto = 0;
+        if (resto != parseInt(cpf.substring(9, 10)) ) return false;
+        
+        soma = 0;
+        for (let i = 1; i <= 10; i++) 
+            soma = soma + parseInt(cpf.substring(i-1, i)) * (12 - i);
+        resto = (soma * 10) % 11;
+        
+        if ((resto == 10) || (resto == 11))  resto = 0;
+        if (resto != parseInt(cpf.substring(10, 11) ) ) return false;
+        
+        return true;
+    }
+
+    function validarCelularReal(cel) {
+        const limpo = cel.replace(/\D/g, '');
+        if (limpo.length !== 11) return false;
+        if (limpo[2] !== '9') return false; // Tem que ter 9
         return true;
     }
 
     function validarEmail(email) {
-        // Regex padrão e remove espaços
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        // Validação flexível: precisa ter algo @ algo . algo
+        return /\S+@\S+\.\S+/.test(email);
     }
 
     socket.on('trocar_slide', d => { 
@@ -289,7 +287,7 @@ const htmlMobile = `
     });
 
     function enviarCadastro() {
-        // .TRIM() É A SOLUÇÃO MÁGICA PARA ERROS DE ESPAÇO
+        // .TRIM() REMOVE ESPAÇOS DO CELULAR
         const nome = document.getElementById('cNome').value.trim();
         const zap = document.getElementById('cZap').value.trim();
         const email = document.getElementById('cEmail').value.trim();
@@ -297,22 +295,19 @@ const htmlMobile = `
 
         let temErro = false;
 
-        // VALIDA NOME
         if(nome.length < 3) { alert("Digite seu nome completo!"); temErro=true; }
 
-        // VALIDA CPF
         if(!validarCPFReal(cpf)) {
             document.getElementById('msgErroCpf').style.display = 'block';
             temErro = true;
         }
 
-        // VALIDA ZAP REAL
         if(!validarCelularReal(zap)) {
+             document.getElementById('msgErroZap').innerText = "Celular inválido! Precisa DDD + 9 na frente.";
              document.getElementById('msgErroZap').style.display = 'block';
              temErro = true;
         }
 
-        // VALIDA EMAIL
         if(!validarEmail(email)) {
             document.getElementById('msgErroEmail').style.display = 'block';
             temErro = true;
@@ -322,7 +317,7 @@ const htmlMobile = `
 
         audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
 
-        document.getElementById('formCadastro').innerHTML = "<h2>Validando dados...</h2><div class='loader'></div>";
+        document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
         socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email, cpf } });
     }
 
@@ -366,7 +361,7 @@ let slideAtual = 0;
 
 campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
 
-// Rotação de slides (30 segundos conforme solicitado)
+// Rotação de slides (30 segundos)
 setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 30000);
 
 function gerarCodigo(prefixo) {
@@ -384,7 +379,7 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// RELATÓRIO EXCEL PREMIUM (COM CPF)
+// RELATÓRIO EXCEL PREMIUM
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
     let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="10" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="10" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">CPF</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
