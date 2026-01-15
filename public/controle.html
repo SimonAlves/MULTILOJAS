@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Sorteio</title>
+    <style>
+        body { background: #222; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #botao-sorteio {
+            width: 220px; height: 220px; background: #ff0000; color: white;
+            border-radius: 50%; border: 5px solid white; font-size: 24px; font-weight: bold;
+            box-shadow: 0 0 30px rgba(255,0,0,0.6); cursor: pointer;
+        }
+        #botao-sorteio:active { transform: scale(0.95); background: #cc0000; }
+    </style>
+</head>
+<body>
+
+    <button id="botao-sorteio" onclick="acionarSorteio()">GANHAR PRÊMIO! 🎁</button>
+    <audio id="somCelular" src="vitoria.mp3"></audio>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const audio = document.getElementById('somCelular');
+
+        function acionarSorteio() {
+            // Toca no celular
+            audio.currentTime = 0;
+            audio.play();
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            
+            // Manda para a TV
+            socket.emit('comando_sorteio');
+        }
+    </script>
+</body>
+</html>
