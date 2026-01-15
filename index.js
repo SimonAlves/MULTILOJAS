@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV
+// 1. HTML TV (RODAPÉ CORRIGIDO + SOM AUTOMÁTICO)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -129,7 +129,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (ATUALIZADO COM VALIDAÇÃO PESADA)
+// 2. HTML MOBILE (VALIDAÇÃO BLINDADA: CPF + CELULAR REAL)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -150,12 +150,12 @@ const htmlMobile = `
         #formCadastro { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
         
         /* INPUTS MELHORADOS */
-        .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; transition: 0.3s; }
-        .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0, 51, 153, 0.3); outline: none; }
+        .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; outline: none; transition: 0.3s; }
+        .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0,51,153,0.3); }
         
-        .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; }
-        .btn-enviar:active { transform: scale(0.98); }
-
+        .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .btn-enviar:active { transform: scale(0.95); }
+        
         /* MENSAGEM DE ERRO */
         .erro-msg { color: #d9534f; font-size: 0.85rem; font-weight: bold; text-align: left; width: 90%; margin: -5px auto 10px auto; display: none; }
     </style>
@@ -169,11 +169,11 @@ const htmlMobile = `
         
         <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
         
-        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" maxlength="14" oninput="mascaraCPF(this)">
+        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" oninput="mascaraCPF(this)" maxlength="14">
         <div id="msgErroCpf" class="erro-msg">CPF Inválido! Verifique os números.</div>
 
-        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" maxlength="15" oninput="mascaraZap(this)">
-        <div id="msgErroZap" class="erro-msg">Número incompleto!</div>
+        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" oninput="mascaraZap(this)" maxlength="15">
+        <div id="msgErroZap" class="erro-msg">Número incompleto ou sem o 9 na frente!</div>
 
         <input type="email" id="cEmail" class="inp-dados" placeholder="Seu E-mail">
         <div id="msgErroEmail" class="erro-msg">E-mail inválido!</div>
@@ -211,8 +211,8 @@ const htmlMobile = `
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
-    // --- MÁSCARAS E VALIDAÇÕES ---
-    function mascaraCPF(i) {
+    // --- MÁSCARAS ---
+    function mascaraCPF(i){
         let v = i.value.replace(/\D/g,"");
         v=v.replace(/(\d{3})(\d)/,"$1.$2");
         v=v.replace(/(\d{3})(\d)/,"$1.$2");
@@ -220,38 +220,41 @@ const htmlMobile = `
         i.value = v;
         document.getElementById('msgErroCpf').style.display = 'none';
     }
-
-    function mascaraZap(i) {
+    
+    function mascaraZap(i){
         let v = i.value.replace(/\D/g,"");
-        v=v.replace(/^(\d{2})(\d)/g,"($1) $2");
+        v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); 
         v=v.replace(/(\d)(\d{4})$/,"$1-$2");
         i.value = v;
         document.getElementById('msgErroZap').style.display = 'none';
     }
 
+    // --- VALIDAÇÃO CELULAR (DDD + 9 DIGITOS + COMEÇAR COM 9) ---
+    function validarCelularReal(cel) {
+        const limpo = cel.replace(/\D/g, '');
+        // Regra 1: 11 dígitos
+        if (limpo.length !== 11) return false;
+        // Regra 2: O primeiro dígito após DDD deve ser 9
+        if (limpo[2] !== '9') return false;
+        return true;
+    }
+
+    // --- VALIDAÇÃO CPF REAL ---
     function validarCPFReal(cpf) {
         cpf = cpf.replace(/[^\d]+/g,'');
         if(cpf == '') return false;
-        // Elimina CPFs invalidos conhecidos
         if (cpf.length != 11 || 
-            cpf == "00000000000" || 
-            cpf == "11111111111" || 
-            cpf == "22222222222" || 
-            cpf == "33333333333" || 
-            cpf == "44444444444" || 
-            cpf == "55555555555" || 
-            cpf == "66666666666" || 
-            cpf == "77777777777" || 
-            cpf == "88888888888" || 
-            cpf == "99999999999")
+            cpf == "00000000000" || cpf == "11111111111" || 
+            cpf == "22222222222" || cpf == "33333333333" || 
+            cpf == "44444444444" || cpf == "55555555555" || 
+            cpf == "66666666666" || cpf == "77777777777" || 
+            cpf == "88888888888" || cpf == "99999999999")
                 return false;
-        // Valida 1o digito
         let add = 0;
         for (let i=0; i < 9; i ++) add += parseInt(cpf.charAt(i)) * (10 - i);
         let rev = 11 - (add % 11);
         if (rev == 10 || rev == 11) rev = 0;
         if (rev != parseInt(cpf.charAt(9))) return false;
-        // Valida 2o digito
         add = 0;
         for (let i = 0; i < 10; i ++) add += parseInt(cpf.charAt(i)) * (11 - i);
         rev = 11 - (add % 11);
@@ -261,8 +264,7 @@ const htmlMobile = `
     }
 
     function validarEmail(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
     socket.on('trocar_slide', d => { 
@@ -282,7 +284,6 @@ const htmlMobile = `
     });
 
     function enviarCadastro() {
-        // Pega os valores
         const nome = document.getElementById('cNome').value.trim();
         const zap = document.getElementById('cZap').value;
         const email = document.getElementById('cEmail').value;
@@ -290,30 +291,29 @@ const htmlMobile = `
 
         let temErro = false;
 
-        // VALIDAÇÃO 1: Nome
-        if(nome.length < 3) { alert("Digite seu nome completo!"); temErro = true; }
+        // VALIDA NOME
+        if(nome.length < 3) { alert("Digite seu nome completo!"); temErro=true; }
 
-        // VALIDAÇÃO 2: CPF Real
+        // VALIDA CPF
         if(!validarCPFReal(cpf)) {
             document.getElementById('msgErroCpf').style.display = 'block';
             temErro = true;
         }
 
-        // VALIDAÇÃO 3: Zap (Tamanho mínimo (11) 91234-5678 = 15 chars)
-        if(zap.length < 14) {
-            document.getElementById('msgErroZap').style.display = 'block';
-            temErro = true;
+        // VALIDA ZAP REAL
+        if(!validarCelularReal(zap)) {
+             document.getElementById('msgErroZap').style.display = 'block';
+             temErro = true;
         }
 
-        // VALIDAÇÃO 4: Email
+        // VALIDA EMAIL
         if(!validarEmail(email)) {
             document.getElementById('msgErroEmail').style.display = 'block';
             temErro = true;
         }
 
-        if(temErro) return; // Se tiver erro, para aqui.
+        if(temErro) return; 
 
-        // SE PASSOU, TOCA O SOM E ENVIA
         audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
 
         document.getElementById('formCadastro').innerHTML = "<h2>Validando dados...</h2><div class='loader'></div>";
@@ -360,7 +360,7 @@ let slideAtual = 0;
 
 campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
 
-// Rotação de slides (Só troca na TV) - MANTIVE SEUS 30 SEGUNDOS
+// Rotação de slides (30 segundos conforme solicitado)
 setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 30000);
 
 function gerarCodigo(prefixo) {
@@ -378,14 +378,13 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// RELATÓRIO EXCEL PREMIUM (ATUALIZADO COM CPF)
+// RELATÓRIO EXCEL PREMIUM (COM CPF)
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
     let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="10" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="10" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">CPF</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
     historicoVendas.forEach(h => {
         let bg = h.status === 'Usado' ? '#d4edda' : 'white';
         let style = h.status === 'Usado' ? 'color:green;font-weight:bold' : '';
-        // Adicionada linha CPF
         relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteCpf}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
     });
     relatorio += `</tbody></table></body></html>`;
@@ -397,7 +396,6 @@ app.get('/baixar-relatorio', (req, res) => {
 const getDadosComBaixas = () => {
     return campanhas.map(c => {
         const qtdBaixas = historicoVendas.filter(h => h.loja === c.loja && h.status === 'Usado').length;
-        // CORREÇÃO: Mostra no admin se for sorteio OU se for intro ativa
         return { ...c, baixas: qtdBaixas, ehSorteio: c.modo === 'sorte' };
     });
 };
@@ -406,7 +404,7 @@ io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
     socket.emit('dados_admin', getDadosComBaixas());
     
-    // RESGATE (AGORA RECEBE E SALVA CPF)
+    // RESGATE
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {};
@@ -428,7 +426,7 @@ io.on('connection', (socket) => {
                 premio: premio, 
                 status: 'Emitido', 
                 clienteNome: dadosCliente.nome,
-                clienteCpf: dadosCliente.cpf, // SALVANDO CPF NO HISTÓRICO
+                clienteCpf: dadosCliente.cpf, 
                 clienteZap: dadosCliente.zap, 
                 clienteEmail: dadosCliente.email 
             });
@@ -440,7 +438,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // VALIDAÇÃO NO CAIXA
     socket.on('validar_cupom', (cod) => {
         const cupom = historicoVendas.find(h => h.codigo === cod.toUpperCase());
         if (!cupom) { socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" }); } 
