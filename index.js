@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (SOM AUTOMÁTICO / DESBLOQUEIO INVISÍVEL)
+// 1. HTML TV (COM RODAPÉ CORRIGIDO PARA MOSTRAR AS LOJAS)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -31,10 +31,13 @@ const htmlTV = `
         .cta-text { color: #FFD700; font-weight: 900; font-size: 1.4rem; text-transform: uppercase; margin-top: 5px; }
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
+        
+        /* ESTILO DO RODAPÉ */
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
-        .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; }
-        .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: grayscale(0%); filter: drop-shadow(0 0 5px white); }
-        .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
+        .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; transform: scale(0.9); }
+        .patrocinador-item.ativo { opacity: 1; transform: scale(1.3); filter: grayscale(0%); filter: drop-shadow(0 0 8px white); font-weight: bold; }
+        .patrocinador-nome { color: white; font-weight: bold; font-size: 1rem; text-transform: uppercase; margin: 0 10px; }
+        
         .pulse { animation: pulse 2s infinite; }
         
         #overlayVitoria { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FFD700; }
@@ -61,7 +64,7 @@ const htmlTV = `
     </div>
     
     <div id="footer">
-        ${campanhas.filter(c => c.modo === 'intro').map(c => 
+        ${campanhas.filter(c => c.modo === 'sorte').map(c => 
             `<div class="patrocinador-item" id="brand-${c.loja}"><span class="patrocinador-nome" style="color:${c.cor}">${c.loja}</span></div>`
         ).join('')}
     </div>
@@ -73,24 +76,22 @@ const htmlTV = `
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
     
-    // --- LÓGICA DE ÁUDIO TV (AUTOPLAY + UNLOCK INVISÍVEL) ---
+    // SOM + GATILHOS INVISÍVEIS PARA TV
     const audioTv = new Audio('/vitoria.mp3'); 
     audioTv.volume = 1.0; 
 
-    // Função para tentar destravar o som em qualquer interação
     function forcarDesbloqueio() {
         if(audioTv.paused) {
             audioTv.play().then(() => {
                 audioTv.pause(); audioTv.currentTime = 0;
-                // Remove os ouvintes se já conseguiu
                 document.removeEventListener('click', forcarDesbloqueio);
                 document.removeEventListener('keydown', forcarDesbloqueio);
                 document.removeEventListener('mousemove', forcarDesbloqueio);
+                console.log("Audio desbloqueado!");
             }).catch(() => {});
         }
     }
 
-    // Adiciona gatilhos invisíveis
     document.addEventListener('click', forcarDesbloqueio);
     document.addEventListener('keydown', forcarDesbloqueio);
     document.addEventListener('mousemove', forcarDesbloqueio);
@@ -105,8 +106,10 @@ const htmlTV = `
         if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
         else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
         
+        // DESTAQUE NO RODAPÉ
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
         const marcaEl = document.getElementById('brand-' + d.loja); if(marcaEl) marcaEl.classList.add('ativo');
+        
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
     });
     
@@ -119,9 +122,9 @@ const htmlTV = `
         overlay.style.display = 'flex'; 
         overlay.classList.add('animacao-vitoria');
         
-        // TOCA O SOM
+        // TOCA SOM (Se já tiver sido desbloqueado)
         audioTv.currentTime = 0; 
-        audioTv.play().catch(e => console.log("Som bloqueado (interaja com a TV)"));
+        audioTv.play().catch(e => console.log("Som bloqueado pelo navegador"));
         
         var duration = 3000; var end = Date.now() + duration;
         (function frame() { confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } }); confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } }); if (Date.now() < end) requestAnimationFrame(frame); }());
@@ -130,7 +133,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (TRAVA DE CADASTRO + SOM NO CLIQUE)
+// 2. HTML MOBILE (TRAVA DE CADASTRO + AUDIO)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -154,6 +157,7 @@ const htmlMobile = `
 </head>
 <body>
     <div id="telaCarregando"><br><h2>Aguardando Sorteio...</h2><div class="loader"></div><p>Olhe para a TV!</p></div>
+    
     <div id="formCadastro">
         <h2 style="color:#333;">🎉 Quase lá!</h2>
         <p>Para liberar seu prêmio, preencha:</p>
@@ -163,7 +167,9 @@ const htmlMobile = `
         <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button>
         <p style="font-size:0.7rem; color:#999; margin-top:10px;">Seus dados estão seguros. Lei LGPD.</p>
     </div>
+
     <div id="telaBloqueio" style="display:none; color:#d9534f;"><h1>🚫 Ops!</h1><p>Você já pegou um cupom hoje.<br>Volte amanhã!</p></div>
+
     <div id="telaVoucher" style="display:none">
         <div style="color: #003399; font-size: 1.5rem; font-weight: 900; margin-bottom: 20px;" class="success-header">SUCESSO! 🎉</div>
         <div class="ticket-card">
@@ -176,6 +182,7 @@ const htmlMobile = `
         </div>
         <button onclick="window.print()" class="btn-print"><span>🖨️</span> IMPRIMIR</button>
     </div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket=io();
@@ -193,7 +200,7 @@ const htmlMobile = `
 
     socket.on('trocar_slide', d => { 
         if (jaPegouHoje) return;
-        if (travadoNoCadastro) return; // SE TIVER DIGITANDO, NÃO MUDA A TELA
+        if (travadoNoCadastro) return; // SE TIVER DIGITANDO, NÃO MUDA A TELA (TRAVA ATIVA)
 
         if(d.modo !== 'intro'){ 
             campanhaAtualId = d.id; 
@@ -214,8 +221,11 @@ const htmlMobile = `
         const email = document.getElementById('cEmail').value;
         if(!nome || !zap || !email) { alert("Por favor, preencha todos os campos!"); return; }
         
-        // --- AQUECIMENTO DO SOM (TRUQUE DO CLIQUE) ---
-        audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
+        // GATILHO DE SOM NO CLIQUE
+        audioVitoria.play().then(() => { 
+            audioVitoria.pause(); 
+            audioVitoria.currentTime = 0; 
+        }).catch(e => console.log(e));
 
         document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
         socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email } });
@@ -233,6 +243,7 @@ const htmlMobile = `
         
         // TOCA O SOM
         audioVitoria.play().catch(e=>console.log(e));
+        
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
@@ -245,7 +256,7 @@ const htmlMobile = `
 // ==================================================================
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
-const htmlAdmin = `<!DOCTYPE html><html><head><title>Painel Admin</title><style>body{background:#222;color:white;font-family:sans-serif;padding:20px}.card{background:#333;padding:15px;margin-bottom:10px;border-radius:8px;border-left:5px solid #555;display:flex;justify-content:space-between}.btn-down{background:#FFD700;color:000;padding:10px 20px;text-decoration:none;border-radius:5px;font-weight:bold}</style></head><body><h1>Painel Admin ⚙️</h1><a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel</a><div id="lista">...</div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let h="";d.forEach(i=>{if(i.ehSorteio){h+= \`<div class="card" style="border-left-color:\${i.cor}"><strong>\${i.loja}</strong><span>📦 \${i.qtd} | 📉 \${i.baixas}</span></div>\`}});document.getElementById('lista').innerHTML=h})</script></body></html>`;
+const htmlAdmin = `<!DOCTYPE html><html><head><title>Painel Admin</title><style>body{background:#222;color:white;font-family:sans-serif;padding:20px}.card{background:#333;padding:15px;margin-bottom:10px;border-radius:8px;border-left:5px solid #555;display:flex;justify-content:space-between}.btn-down{background:#FFD700;color:000;padding:10px 20px;text-decoration:none;border-radius:5px;font-weight:bold}</style></head><body><h1>Painel Admin ⚙️</h1><a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Premium</a><div id="lista">...</div><script src="/socket.io/socket.io.js"></script><script>const socket=io();socket.on('dados_admin',d=>{let h="";d.forEach(i=>{if(i.ehSorteio){h+= \`<div class="card" style="border-left-color:\${i.cor}"><strong>\${i.loja}</strong><span>📦 \${i.qtd} | 📉 \${i.baixas}</span></div>\`}});document.getElementById('lista').innerHTML=h})</script></body></html>`;
 
 // ==================================================================
 // MOTOR DO SERVIDOR
@@ -262,6 +273,7 @@ let slideAtual = 0;
 
 campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
 
+// Rotação de slides (Só troca na TV)
 setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 15000);
 
 function gerarCodigo(prefixo) {
@@ -279,13 +291,14 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// RELATÓRIO EXCEL PREMIUM
+// RELATÓRIO EXCEL PREMIUM (HTML TABLE)
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
-    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="9" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
+    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="9" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="9" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
     historicoVendas.forEach(h => {
         let bg = h.status === 'Usado' ? '#d4edda' : 'white';
-        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td>${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
+        let style = h.status === 'Usado' ? 'color:green;font-weight:bold' : '';
+        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
     });
     relatorio += `</tbody></table></body></html>`;
     res.header('Content-Type', 'application/vnd.ms-excel');
@@ -296,6 +309,7 @@ app.get('/baixar-relatorio', (req, res) => {
 const getDadosComBaixas = () => {
     return campanhas.map(c => {
         const qtdBaixas = historicoVendas.filter(h => h.loja === c.loja && h.status === 'Usado').length;
+        // CORREÇÃO: Mostra no admin se for sorteio OU se for intro ativa
         return { ...c, baixas: qtdBaixas, ehSorteio: c.modo === 'sorte' };
     });
 };
@@ -304,16 +318,32 @@ io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
     socket.emit('dados_admin', getDadosComBaixas());
     
+    // RESGATE
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
+        const dadosCliente = dadosRecebidos.cliente || {};
         let camp = campanhas[id];
+        
         if (camp && camp.qtd > 0) {
             const sorte = Math.random() * 100;
             let premio = "10% OFF"; let isGold = false;
             if (sorte > 95) { premio = "50% OFF"; isGold = true; }
+            
             camp.qtd--; 
             const cod = gerarCodigo(camp.prefixo || 'LOJA');
-            historicoVendas.push({ data: new Date().toLocaleDateString('pt-BR'), hora: new Date().toLocaleTimeString('pt-BR'), loja: camp.loja, codigo: cod, premio: premio, status: 'Emitido', clienteNome: dadosRecebidos.cliente.nome, clienteZap: dadosRecebidos.cliente.zap, clienteEmail: dadosRecebidos.cliente.email });
+            
+            historicoVendas.push({ 
+                data: new Date().toLocaleDateString('pt-BR'), 
+                hora: new Date().toLocaleTimeString('pt-BR'), 
+                loja: camp.loja, 
+                codigo: cod, 
+                premio: premio, 
+                status: 'Emitido', 
+                clienteNome: dadosCliente.nome, 
+                clienteZap: dadosCliente.zap, 
+                clienteEmail: dadosCliente.email 
+            });
+            
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
             io.emit('atualizar_qtd', camp);
             io.emit('aviso_vitoria_tv', { loja: camp.loja, premio: premio, isGold: isGold });
@@ -321,6 +351,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // VALIDAÇÃO NO CAIXA
     socket.on('validar_cupom', (cod) => {
         const cupom = historicoVendas.find(h => h.codigo === cod.toUpperCase());
         if (!cupom) { socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" }); } 
@@ -330,4 +361,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sistema FERRARI rodando na porta ${PORT}`));
+server.listen(PORT, () => console.log(`Sistema FERRARI + LEADS + SOM OFFLINE rodando na porta ${PORT}`));
