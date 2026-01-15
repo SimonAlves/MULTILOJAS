@@ -86,7 +86,7 @@ const htmlTV = `
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; 
         
-        // CORREÇÃO DE SINTAXE (SEM ERROS)
+        // CORREÇÃO DE SINTAXE (EVITA ERRO URL)
         bgBlur.style.backgroundImage = "url('" + caminhoImagem + "')";
         
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
@@ -176,6 +176,7 @@ const htmlMobile = `
     
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
     
+    // SOM LOCAL
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
@@ -231,7 +232,7 @@ const htmlMobile = `
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
 // ==================================================================
-// 4. HTML ADMIN (Com monitoramento de estoque e baixas)
+// 4. HTML ADMIN (Com monitoramento)
 // ==================================================================
 const htmlAdmin = `
 <!DOCTYPE html>
@@ -250,7 +251,7 @@ const htmlAdmin = `
 </head>
 <body>
     <h1>Painel Admin ⚙️</h1>
-    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo (Colorido)</a>
+    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo (Design Premium)</a>
     <div id="lista">Carregando dados...</div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -299,7 +300,7 @@ function gerarCodigo(prefixo) {
     return `${prefixo}-${result}`;
 }
 
-// ROTAS
+// ROTAS PADRÃO
 app.get('/tv', (req, res) => res.send(htmlTV));
 app.get('/mobile', (req, res) => res.send(htmlMobile));
 app.get('/admin', (req, res) => res.send(htmlAdmin));
@@ -308,53 +309,91 @@ app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
 // ============================================================================
-// NOVO: RELATÓRIO EXCEL ESTILIZADO (HTML TABLE)
+// RELATÓRIO EXCEL PREMIUM (DESIGN "FERRARI")
 // ============================================================================
 app.get('/baixar-relatorio', (req, res) => {
-    let tabela = `
+    // 1. Cálculos para o Resumo
+    const totalLeads = historicoVendas.length;
+    const totalUsados = historicoVendas.filter(h => h.status === 'Usado').length;
+    const dataHoje = new Date().toLocaleDateString('pt-BR');
+
+    // 2. Construção do Visual (HTML + CSS inline para Excel)
+    let relatorio = `
     <html>
-    <head><meta charset="UTF-8"></head>
-    <body style="font-family: Arial, sans-serif;">
-        <table border="1" style="border-collapse: collapse; width: 100%;">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f4;">
+        
+        <table width="100%" style="margin-bottom: 20px;">
+            <tr>
+                <td colspan="9" style="background-color: #111; color: #FFD700; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; border-bottom: 5px solid #FFD700;">
+                    🏆 RELATÓRIO DE PERFORMANCE - SISTEMA FERRARI
+                </td>
+            </tr>
+            <tr>
+                <td colspan="9" style="background-color: #333; color: white; padding: 10px; text-align: center;">
+                    Gerado em: ${dataHoje} | Total de Leads Captados: <b>${totalLeads}</b> | Vouchers Utilizados: <b>${totalUsados}</b>
+                </td>
+            </tr>
+        </table>
+
+        <br>
+
+        <table border="1" style="border-collapse: collapse; width: 100%; border-color: #ddd;">
             <thead>
-                <tr style="background-color: #333; color: #FFD700; text-align: left;">
-                    <th style="padding: 10px;">DATA</th>
-                    <th style="padding: 10px;">HORA</th>
-                    <th style="padding: 10px;">LOJA</th>
-                    <th style="padding: 10px;">CODIGO</th>
-                    <th style="padding: 10px;">PREMIO</th>
-                    <th style="padding: 10px;">STATUS</th>
-                    <th style="padding: 10px;">NOME DO CLIENTE</th>
-                    <th style="padding: 10px;">WHATSAPP</th>
-                    <th style="padding: 10px;">EMAIL</th>
+                <tr style="background-color: #222; color: #fff; text-align: center;">
+                    <th style="padding: 12px; border: 1px solid #444; background-color: #FFD700; color: #000;">DATA</th>
+                    <th style="padding: 12px; border: 1px solid #444;">HORA</th>
+                    <th style="padding: 12px; border: 1px solid #444;">LOJA</th>
+                    <th style="padding: 12px; border: 1px solid #444;">CÓDIGO</th>
+                    <th style="padding: 12px; border: 1px solid #444;">PRÊMIO</th>
+                    <th style="padding: 12px; border: 1px solid #444;">STATUS</th>
+                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">NOME</th>
+                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">WHATSAPP</th>
+                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">EMAIL</th>
                 </tr>
             </thead>
             <tbody>`;
 
     historicoVendas.forEach(h => {
-        // Define cor da linha se for Usado
-        const corStatus = h.status === 'Usado' ? '#e6ffe6' : '#fff';
-        
-        tabela += `
-            <tr style="background-color: ${corStatus};">
-                <td style="padding: 5px;">${h.data}</td>
-                <td style="padding: 5px;">${h.hora}</td>
-                <td style="padding: 5px;">${h.loja}</td>
-                <td style="padding: 5px; font-weight: bold;">${h.codigo}</td>
-                <td style="padding: 5px;">${h.premio}</td>
-                <td style="padding: 5px;">${h.status}</td>
-                <td style="padding: 5px;">${h.clienteNome || '-'}</td>
-                <td style="padding: 5px;">${h.clienteZap || '-'}</td>
-                <td style="padding: 5px;">${h.clienteEmail || '-'}</td>
+        // Lógica de Cores: Se usado = Verde Claro, Se não = Branco
+        // Se for prêmio Gold (50%) = Fundo Amarelo Claro
+        let bgRow = '#ffffff';
+        let colorText = '#000000';
+        let statusStyle = 'font-weight:normal;';
+
+        if (h.status === 'Usado') {
+            bgRow = '#d4edda'; // Verde Suave
+            colorText = '#155724'; // Verde Escuro
+            statusStyle = 'font-weight:bold; color: green;';
+        } else if (h.premio.includes('50%')) {
+            bgRow = '#fff3cd'; // Amarelo Suave (Gold)
+        }
+
+        relatorio += `
+            <tr style="background-color: ${bgRow}; color: ${colorText}; text-align: center;">
+                <td style="padding: 10px;">${h.data}</td>
+                <td style="padding: 10px;">${h.hora}</td>
+                <td style="padding: 10px; font-weight:bold;">${h.loja}</td>
+                <td style="padding: 10px; font-family: monospace; font-size: 1.1em;">${h.codigo}</td>
+                <td style="padding: 10px; color: #d9534f; font-weight:bold;">${h.premio}</td>
+                <td style="padding: 10px; ${statusStyle}">${h.status}</td>
+                <td style="padding: 10px; text-align: left;">${h.clienteNome || '--'}</td>
+                <td style="padding: 10px;">${h.clienteZap || '--'}</td>
+                <td style="padding: 10px; text-align: left;">${h.clienteEmail || '--'}</td>
             </tr>`;
     });
 
-    tabela += `</tbody></table></body></html>`;
+    relatorio += `</tbody></table>
+    <br>
+    <div style="text-align:center; color: #666; font-size: 12px;">Relatório confidencial gerado pelo Sistema Ferrari</div>
+    </body></html>`;
 
-    // Headers para o navegador entender que é um Excel
+    // Headers para forçar o download como Excel
     res.header('Content-Type', 'application/vnd.ms-excel');
-    res.attachment('relatorio_ferrari_completo.xls');
-    res.send(tabela);
+    res.attachment('Relatorio_Ferrari_Design.xls');
+    res.send(relatorio);
 });
 
 const getDadosComBaixas = () => {
