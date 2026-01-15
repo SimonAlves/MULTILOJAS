@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (COM RODAPÉ CORRIGIDO PARA MOSTRAR AS LOJAS)
+// 1. HTML TV
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -32,7 +32,6 @@ const htmlTV = `
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
         
-        /* ESTILO DO RODAPÉ */
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
         .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; transform: scale(0.9); }
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.3); filter: grayscale(0%); filter: drop-shadow(0 0 8px white); font-weight: bold; }
@@ -76,7 +75,6 @@ const htmlTV = `
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
     
-    // SOM + GATILHOS INVISÍVEIS PARA TV
     const audioTv = new Audio('/vitoria.mp3'); 
     audioTv.volume = 1.0; 
 
@@ -106,7 +104,6 @@ const htmlTV = `
         if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
         else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
         
-        // DESTAQUE NO RODAPÉ
         document.querySelectorAll('.patrocinador-item').forEach(el => el.classList.remove('ativo'));
         const marcaEl = document.getElementById('brand-' + d.loja); if(marcaEl) marcaEl.classList.add('ativo');
         
@@ -122,7 +119,6 @@ const htmlTV = `
         overlay.style.display = 'flex'; 
         overlay.classList.add('animacao-vitoria');
         
-        // TOCA SOM (Se já tiver sido desbloqueado)
         audioTv.currentTime = 0; 
         audioTv.play().catch(e => console.log("Som bloqueado pelo navegador"));
         
@@ -133,7 +129,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (TRAVA DE CADASTRO + AUDIO)
+// 2. HTML MOBILE (ATUALIZADO COM VALIDAÇÃO PESADA)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -150,9 +146,18 @@ const htmlMobile = `
         .btn-print { background: #333; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #333; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+        
         #formCadastro { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
-        .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; }
+        
+        /* INPUTS MELHORADOS */
+        .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; transition: 0.3s; }
+        .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0, 51, 153, 0.3); outline: none; }
+        
         .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; }
+        .btn-enviar:active { transform: scale(0.98); }
+
+        /* MENSAGEM DE ERRO */
+        .erro-msg { color: #d9534f; font-size: 0.85rem; font-weight: bold; text-align: left; width: 90%; margin: -5px auto 10px auto; display: none; }
     </style>
 </head>
 <body>
@@ -160,10 +165,19 @@ const htmlMobile = `
     
     <div id="formCadastro">
         <h2 style="color:#333;">🎉 Quase lá!</h2>
-        <p>Para liberar seu prêmio, preencha:</p>
+        <p>Preencha para liberar o prêmio:</p>
+        
         <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
-        <input type="tel" id="cZap" class="inp-dados" placeholder="Seu WhatsApp (com DDD)">
+        
+        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" maxlength="14" oninput="mascaraCPF(this)">
+        <div id="msgErroCpf" class="erro-msg">CPF Inválido! Verifique os números.</div>
+
+        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" maxlength="15" oninput="mascaraZap(this)">
+        <div id="msgErroZap" class="erro-msg">Número incompleto!</div>
+
         <input type="email" id="cEmail" class="inp-dados" placeholder="Seu E-mail">
+        <div id="msgErroEmail" class="erro-msg">E-mail inválido!</div>
+
         <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button>
         <p style="font-size:0.7rem; color:#999; margin-top:10px;">Seus dados estão seguros. Lei LGPD.</p>
     </div>
@@ -188,24 +202,76 @@ const htmlMobile = `
     const socket=io();
     let jaPegouHoje = false;
     let campanhaAtualId = null; 
-    let travadoNoCadastro = false; // TRAVA DE SEGURANÇA
+    let travadoNoCadastro = false; 
 
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
     
-    // SOM LOCAL MOBILE
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
+    // --- MÁSCARAS E VALIDAÇÕES ---
+    function mascaraCPF(i) {
+        let v = i.value.replace(/\D/g,"");
+        v=v.replace(/(\d{3})(\d)/,"$1.$2");
+        v=v.replace(/(\d{3})(\d)/,"$1.$2");
+        v=v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+        i.value = v;
+        document.getElementById('msgErroCpf').style.display = 'none';
+    }
+
+    function mascaraZap(i) {
+        let v = i.value.replace(/\D/g,"");
+        v=v.replace(/^(\d{2})(\d)/g,"($1) $2");
+        v=v.replace(/(\d)(\d{4})$/,"$1-$2");
+        i.value = v;
+        document.getElementById('msgErroZap').style.display = 'none';
+    }
+
+    function validarCPFReal(cpf) {
+        cpf = cpf.replace(/[^\d]+/g,'');
+        if(cpf == '') return false;
+        // Elimina CPFs invalidos conhecidos
+        if (cpf.length != 11 || 
+            cpf == "00000000000" || 
+            cpf == "11111111111" || 
+            cpf == "22222222222" || 
+            cpf == "33333333333" || 
+            cpf == "44444444444" || 
+            cpf == "55555555555" || 
+            cpf == "66666666666" || 
+            cpf == "77777777777" || 
+            cpf == "88888888888" || 
+            cpf == "99999999999")
+                return false;
+        // Valida 1o digito
+        let add = 0;
+        for (let i=0; i < 9; i ++) add += parseInt(cpf.charAt(i)) * (10 - i);
+        let rev = 11 - (add % 11);
+        if (rev == 10 || rev == 11) rev = 0;
+        if (rev != parseInt(cpf.charAt(9))) return false;
+        // Valida 2o digito
+        add = 0;
+        for (let i = 0; i < 10; i ++) add += parseInt(cpf.charAt(i)) * (11 - i);
+        rev = 11 - (add % 11);
+        if (rev == 10 || rev == 11) rev = 0;
+        if (rev != parseInt(cpf.charAt(10))) return false;
+        return true;
+    }
+
+    function validarEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    }
+
     socket.on('trocar_slide', d => { 
         if (jaPegouHoje) return;
-        if (travadoNoCadastro) return; // SE TIVER DIGITANDO, NÃO MUDA A TELA (TRAVA ATIVA)
+        if (travadoNoCadastro) return; 
 
         if(d.modo !== 'intro'){ 
             campanhaAtualId = d.id; 
-            travadoNoCadastro = true; // ATIVA A TRAVA ASSIM QUE O FORM APARECE
-            
+            travadoNoCadastro = true; 
             document.getElementById('telaCarregando').style.display = 'none';
             document.getElementById('formCadastro').style.display = 'block';
         } else {
@@ -216,19 +282,42 @@ const htmlMobile = `
     });
 
     function enviarCadastro() {
-        const nome = document.getElementById('cNome').value;
+        // Pega os valores
+        const nome = document.getElementById('cNome').value.trim();
         const zap = document.getElementById('cZap').value;
         const email = document.getElementById('cEmail').value;
-        if(!nome || !zap || !email) { alert("Por favor, preencha todos os campos!"); return; }
-        
-        // GATILHO DE SOM NO CLIQUE
-        audioVitoria.play().then(() => { 
-            audioVitoria.pause(); 
-            audioVitoria.currentTime = 0; 
-        }).catch(e => console.log(e));
+        const cpf = document.getElementById('cCpf').value;
 
-        document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
-        socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email } });
+        let temErro = false;
+
+        // VALIDAÇÃO 1: Nome
+        if(nome.length < 3) { alert("Digite seu nome completo!"); temErro = true; }
+
+        // VALIDAÇÃO 2: CPF Real
+        if(!validarCPFReal(cpf)) {
+            document.getElementById('msgErroCpf').style.display = 'block';
+            temErro = true;
+        }
+
+        // VALIDAÇÃO 3: Zap (Tamanho mínimo (11) 91234-5678 = 15 chars)
+        if(zap.length < 14) {
+            document.getElementById('msgErroZap').style.display = 'block';
+            temErro = true;
+        }
+
+        // VALIDAÇÃO 4: Email
+        if(!validarEmail(email)) {
+            document.getElementById('msgErroEmail').style.display = 'block';
+            temErro = true;
+        }
+
+        if(temErro) return; // Se tiver erro, para aqui.
+
+        // SE PASSOU, TOCA O SOM E ENVIA
+        audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
+
+        document.getElementById('formCadastro').innerHTML = "<h2>Validando dados...</h2><div class='loader'></div>";
+        socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email, cpf } });
     }
 
     socket.on('sucesso', d => { 
@@ -241,9 +330,7 @@ const htmlMobile = `
         document.getElementById('codVoucher').innerText = d.codigo;
         const agora = new Date(); document.getElementById('dataHora').innerText = agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR');
         
-        // TOCA O SOM
         audioVitoria.play().catch(e=>console.log(e));
-        
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
         
         if(d.isGold) { document.getElementById('topBar').style.background = "#FFD700"; document.querySelector('.success-header').innerText = "SORTE GRANDE! 🌟"; } 
@@ -273,7 +360,7 @@ let slideAtual = 0;
 
 campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
 
-// Rotação de slides (Só troca na TV)
+// Rotação de slides (Só troca na TV) - MANTIVE SEUS 30 SEGUNDOS
 setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 30000);
 
 function gerarCodigo(prefixo) {
@@ -291,14 +378,15 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// RELATÓRIO EXCEL PREMIUM (HTML TABLE)
+// RELATÓRIO EXCEL PREMIUM (ATUALIZADO COM CPF)
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
-    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="9" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="9" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
+    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="10" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="10" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">CPF</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
     historicoVendas.forEach(h => {
         let bg = h.status === 'Usado' ? '#d4edda' : 'white';
         let style = h.status === 'Usado' ? 'color:green;font-weight:bold' : '';
-        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
+        // Adicionada linha CPF
+        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteCpf}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
     });
     relatorio += `</tbody></table></body></html>`;
     res.header('Content-Type', 'application/vnd.ms-excel');
@@ -318,7 +406,7 @@ io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
     socket.emit('dados_admin', getDadosComBaixas());
     
-    // RESGATE
+    // RESGATE (AGORA RECEBE E SALVA CPF)
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {};
@@ -339,7 +427,8 @@ io.on('connection', (socket) => {
                 codigo: cod, 
                 premio: premio, 
                 status: 'Emitido', 
-                clienteNome: dadosCliente.nome, 
+                clienteNome: dadosCliente.nome,
+                clienteCpf: dadosCliente.cpf, // SALVANDO CPF NO HISTÓRICO
                 clienteZap: dadosCliente.zap, 
                 clienteEmail: dadosCliente.email 
             });
@@ -362,4 +451,3 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Sistema FERRARI + LEADS + SOM OFFLINE rodando na porta ${PORT}`));
-
