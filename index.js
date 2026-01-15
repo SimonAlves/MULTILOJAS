@@ -3,11 +3,11 @@ const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
-// IMPORTANTE: Puxa as configurações do seu arquivo config.js
+// Puxa as configurações
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (Som Local + Alerta + Fundo Corrigido)
+// 1. HTML TV (COM AUTO-UNLOCK INTELIGENTE)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -45,7 +45,7 @@ const htmlTV = `
         .subtitulo-vitoria { font-size: 3rem; margin-top: 20px; color: #FFD700; }
     </style>
 </head>
-<body onclick="desbloquearAudio()">
+<body>
     <div id="overlayVitoria">
         <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
         <h2 class="subtitulo-vitoria" id="textoPremioTV">...</h2>
@@ -76,19 +76,38 @@ const htmlTV = `
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
     
-    // SOM LOCAL (SEM FALHAR)
     const audioTv = new Audio('/vitoria.mp3'); 
     audioTv.volume = 1.0; 
+
+    // --- AUTOPLAY INTELIGENTE (SEM BOTÃO) ---
+    // Tenta desbloquear o som em qualquer movimento do mouse, tecla ou toque
+    function forcarDesbloqueio() {
+        if(audioTv.paused) {
+            audioTv.play().then(() => {
+                audioTv.pause();
+                audioTv.currentTime = 0;
+                // Se conseguiu, remove os eventos para não pesar
+                document.removeEventListener('click', forcarDesbloqueio);
+                document.removeEventListener('mousemove', forcarDesbloqueio);
+                document.removeEventListener('keydown', forcarDesbloqueio);
+                document.removeEventListener('touchstart', forcarDesbloqueio);
+            }).catch(() => {}); // Ignora erro silenciosamente se ainda estiver bloqueado
+        }
+    }
+
+    // Adiciona "ouvintes" para qualquer suspiro que o usuário der na máquina
+    document.addEventListener('click', forcarDesbloqueio);
+    document.addEventListener('mousemove', forcarDesbloqueio);
+    document.addEventListener('keydown', forcarDesbloqueio);
+    document.addEventListener('touchstart', forcarDesbloqueio);
     
-    function desbloquearAudio(){ audioTv.play().then(()=>audioTv.pause()); }
+    // Tenta uma vez no carregamento (vai que o navegador deixa)
+    window.onload = forcarDesbloqueio;
 
     socket.on('trocar_slide', d => {
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; 
-        
-        // CORREÇÃO DE SINTAXE (EVITA ERRO URL)
         bgBlur.style.backgroundImage = "url('" + caminhoImagem + "')";
-        
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
         if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
         else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
@@ -96,12 +115,20 @@ const htmlTV = `
         const marcaEl = document.getElementById('brand-' + d.loja); if(marcaEl) marcaEl.classList.add('ativo');
         fetch('/qrcode').then(r=>r.text()).then(u => document.getElementById('qrCode').src = u);
     });
+    
     socket.on('atualizar_qtd', d => { qtdDisplay.innerText = d.qtd; });
+    
     socket.on('aviso_vitoria_tv', d => {
         const overlay = document.getElementById('overlayVitoria');
         document.getElementById('textoPremioTV').innerText = "Acabou de ganhar " + d.premio + " na " + d.loja + "!";
-        overlay.style.display = 'flex'; overlay.classList.add('animacao-vitoria');
-        audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Precisa clicar na TV para ativar som"));
+        
+        overlay.style.display = 'flex'; 
+        overlay.classList.add('animacao-vitoria');
+        
+        // TOCA O SOM
+        audioTv.currentTime = 0; 
+        audioTv.play().catch(e => console.log("Aguardando interação para som..."));
+        
         var duration = 3000; var end = Date.now() + duration;
         (function frame() { confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 } }); confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 } }); if (Date.now() < end) requestAnimationFrame(frame); }());
         setTimeout(() => { overlay.style.display = 'none'; }, 6000);
@@ -109,7 +136,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (COM TRAVA DE CADASTRO)
+// 2. HTML MOBILE
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -176,7 +203,6 @@ const htmlMobile = `
     
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
     
-    // SOM LOCAL
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
@@ -203,6 +229,8 @@ const htmlMobile = `
         const email = document.getElementById('cEmail').value;
         if(!nome || !zap || !email) { alert("Por favor, preencha todos os campos!"); return; }
         
+        audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
+
         document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
         socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email } });
     }
@@ -300,7 +328,7 @@ function gerarCodigo(prefixo) {
     return `${prefixo}-${result}`;
 }
 
-// ROTAS PADRÃO
+// ROTAS
 app.get('/tv', (req, res) => res.send(htmlTV));
 app.get('/mobile', (req, res) => res.send(htmlMobile));
 app.get('/admin', (req, res) => res.send(htmlAdmin));
@@ -308,89 +336,36 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// ============================================================================
-// RELATÓRIO EXCEL PREMIUM (DESIGN "FERRARI")
-// ============================================================================
+// RELATÓRIO EXCEL
 app.get('/baixar-relatorio', (req, res) => {
-    // 1. Cálculos para o Resumo
     const totalLeads = historicoVendas.length;
     const totalUsados = historicoVendas.filter(h => h.status === 'Usado').length;
     const dataHoje = new Date().toLocaleDateString('pt-BR');
 
-    // 2. Construção do Visual (HTML + CSS inline para Excel)
     let relatorio = `
     <html>
-    <head>
-        <meta charset="UTF-8">
-    </head>
+    <head><meta charset="UTF-8"></head>
     <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f4f4;">
-        
         <table width="100%" style="margin-bottom: 20px;">
-            <tr>
-                <td colspan="9" style="background-color: #111; color: #FFD700; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; border-bottom: 5px solid #FFD700;">
-                    🏆 RELATÓRIO DE PERFORMANCE - SISTEMA FERRARI
-                </td>
-            </tr>
-            <tr>
-                <td colspan="9" style="background-color: #333; color: white; padding: 10px; text-align: center;">
-                    Gerado em: ${dataHoje} | Total de Leads Captados: <b>${totalLeads}</b> | Vouchers Utilizados: <b>${totalUsados}</b>
-                </td>
-            </tr>
-        </table>
-
-        <br>
-
+            <tr><td colspan="9" style="background-color: #111; color: #FFD700; padding: 20px; text-align: center; font-size: 24px; font-weight: bold; border-bottom: 5px solid #FFD700;">🏆 RELATÓRIO DE PERFORMANCE - SISTEMA FERRARI</td></tr>
+            <tr><td colspan="9" style="background-color: #333; color: white; padding: 10px; text-align: center;">Gerado em: ${dataHoje} | Total de Leads Captados: <b>${totalLeads}</b> | Vouchers Utilizados: <b>${totalUsados}</b></td></tr>
+        </table><br>
         <table border="1" style="border-collapse: collapse; width: 100%; border-color: #ddd;">
             <thead>
                 <tr style="background-color: #222; color: #fff; text-align: center;">
-                    <th style="padding: 12px; border: 1px solid #444; background-color: #FFD700; color: #000;">DATA</th>
-                    <th style="padding: 12px; border: 1px solid #444;">HORA</th>
-                    <th style="padding: 12px; border: 1px solid #444;">LOJA</th>
-                    <th style="padding: 12px; border: 1px solid #444;">CÓDIGO</th>
-                    <th style="padding: 12px; border: 1px solid #444;">PRÊMIO</th>
-                    <th style="padding: 12px; border: 1px solid #444;">STATUS</th>
-                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">NOME</th>
-                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">WHATSAPP</th>
-                    <th style="padding: 12px; border: 1px solid #444; background-color: #0055aa; color: white;">EMAIL</th>
+                    <th style="padding: 12px; background-color: #FFD700; color: #000;">DATA</th><th style="padding: 12px;">HORA</th><th style="padding: 12px;">LOJA</th><th style="padding: 12px;">CÓDIGO</th><th style="padding: 12px;">PRÊMIO</th><th style="padding: 12px;">STATUS</th><th style="padding: 12px; background-color: #0055aa;">NOME</th><th style="padding: 12px; background-color: #0055aa;">WHATSAPP</th><th style="padding: 12px; background-color: #0055aa;">EMAIL</th>
                 </tr>
-            </thead>
-            <tbody>`;
+            </thead><tbody>`;
 
     historicoVendas.forEach(h => {
-        // Lógica de Cores: Se usado = Verde Claro, Se não = Branco
-        // Se for prêmio Gold (50%) = Fundo Amarelo Claro
-        let bgRow = '#ffffff';
-        let colorText = '#000000';
-        let statusStyle = 'font-weight:normal;';
+        let bgRow = '#ffffff'; let statusStyle = 'font-weight:normal;';
+        if (h.status === 'Usado') { bgRow = '#d4edda'; statusStyle = 'font-weight:bold; color: green;'; } 
+        else if (h.premio.includes('50%')) { bgRow = '#fff3cd'; }
 
-        if (h.status === 'Usado') {
-            bgRow = '#d4edda'; // Verde Suave
-            colorText = '#155724'; // Verde Escuro
-            statusStyle = 'font-weight:bold; color: green;';
-        } else if (h.premio.includes('50%')) {
-            bgRow = '#fff3cd'; // Amarelo Suave (Gold)
-        }
-
-        relatorio += `
-            <tr style="background-color: ${bgRow}; color: ${colorText}; text-align: center;">
-                <td style="padding: 10px;">${h.data}</td>
-                <td style="padding: 10px;">${h.hora}</td>
-                <td style="padding: 10px; font-weight:bold;">${h.loja}</td>
-                <td style="padding: 10px; font-family: monospace; font-size: 1.1em;">${h.codigo}</td>
-                <td style="padding: 10px; color: #d9534f; font-weight:bold;">${h.premio}</td>
-                <td style="padding: 10px; ${statusStyle}">${h.status}</td>
-                <td style="padding: 10px; text-align: left;">${h.clienteNome || '--'}</td>
-                <td style="padding: 10px;">${h.clienteZap || '--'}</td>
-                <td style="padding: 10px; text-align: left;">${h.clienteEmail || '--'}</td>
-            </tr>`;
+        relatorio += `<tr style="background-color: ${bgRow}; text-align: center;"><td style="padding: 10px;">${h.data}</td><td style="padding: 10px;">${h.hora}</td><td style="padding: 10px;">${h.loja}</td><td style="padding: 10px; font-weight:bold;">${h.codigo}</td><td style="padding: 10px; color: #d9534f; font-weight:bold;">${h.premio}</td><td style="padding: 10px; ${statusStyle}">${h.status}</td><td style="padding: 10px;">${h.clienteNome || '--'}</td><td style="padding: 10px;">${h.clienteZap || '--'}</td><td style="padding: 10px;">${h.clienteEmail || '--'}</td></tr>`;
     });
 
-    relatorio += `</tbody></table>
-    <br>
-    <div style="text-align:center; color: #666; font-size: 12px;">Relatório confidencial gerado pelo Sistema Ferrari</div>
-    </body></html>`;
-
-    // Headers para forçar o download como Excel
+    relatorio += `</tbody></table></body></html>`;
     res.header('Content-Type', 'application/vnd.ms-excel');
     res.attachment('Relatorio_Ferrari_Design.xls');
     res.send(relatorio);
@@ -407,11 +382,9 @@ io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
     socket.emit('dados_admin', getDadosComBaixas());
     
-    // RESGATE DO CLIENTE
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {}; 
-
         let camp = campanhas[id];
         if (camp && camp.qtd > 0) {
             const sorte = Math.random() * 100;
@@ -420,17 +393,7 @@ io.on('connection', (socket) => {
             camp.qtd--; camp.totalResgates++;
             const cod = gerarCodigo(camp.prefixo || 'LOJA');
             
-            historicoVendas.push({ 
-                data: new Date().toLocaleDateString('pt-BR'), 
-                hora: new Date().toLocaleTimeString('pt-BR'), 
-                loja: camp.loja, 
-                codigo: cod, 
-                premio: premio, 
-                status: 'Emitido',
-                clienteNome: dadosCliente.nome,
-                clienteZap: dadosCliente.zap,
-                clienteEmail: dadosCliente.email
-            });
+            historicoVendas.push({ data: new Date().toLocaleDateString('pt-BR'), hora: new Date().toLocaleTimeString('pt-BR'), loja: camp.loja, codigo: cod, premio: premio, status: 'Emitido', clienteNome: dadosCliente.nome, clienteZap: dadosCliente.zap, clienteEmail: dadosCliente.email });
             
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
             io.emit('atualizar_qtd', camp);
@@ -439,18 +402,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // CAIXA VALIDAÇÃO
     socket.on('validar_cupom', (cod) => {
         const cupom = historicoVendas.find(h => h.codigo === cod.toUpperCase());
-        if (!cupom) {
-            socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" });
-        } else if (cupom.status === 'Usado') {
-            socket.emit('resultado_validacao', { sucesso: false, msg: "Já Utilizado!" });
-        } else { 
-            cupom.status = 'Usado'; 
-            socket.emit('resultado_validacao', { sucesso: true, msg: "✅ VÁLIDO!", detalhe: `${cupom.premio} - ${cupom.loja}` });
-            io.emit('dados_admin', getDadosComBaixas());
-        }
+        if (!cupom) { socket.emit('resultado_validacao', { sucesso: false, msg: "Código Inválido" }); } 
+        else if (cupom.status === 'Usado') { socket.emit('resultado_validacao', { sucesso: false, msg: "Já Utilizado!" }); } 
+        else { cupom.status = 'Usado'; socket.emit('resultado_validacao', { sucesso: true, msg: "✅ VÁLIDO!", detalhe: `${cupom.premio} - ${cupom.loja}` }); io.emit('dados_admin', getDadosComBaixas()); }
     });
 
     socket.on('admin_update', (d) => { campanhas[d.id].qtd = parseInt(d.qtd); io.emit('dados_admin', getDadosComBaixas()); });
