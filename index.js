@@ -129,7 +129,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (VALIDAÇÃO BLINDADA: CPF + CELULAR REAL)
+// 2. HTML MOBILE (COM CORREÇÃO DE ESPAÇOS EM BRANCO)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -223,15 +223,17 @@ const htmlMobile = `
     
     function mascaraZap(i){
         let v = i.value.replace(/\D/g,"");
+        // Formata celular: (11) 98888-8888
         v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); 
         v=v.replace(/(\d)(\d{4})$/,"$1-$2");
         i.value = v;
         document.getElementById('msgErroZap').style.display = 'none';
     }
 
-    // --- VALIDAÇÃO CELULAR (DDD + 9 DIGITOS + COMEÇAR COM 9) ---
+    // --- VALIDAÇÕES BLINDADAS COM TRIM ---
+    
     function validarCelularReal(cel) {
-        const limpo = cel.replace(/\D/g, '');
+        const limpo = cel.replace(/\D/g, ''); // Remove formatação
         // Regra 1: 11 dígitos
         if (limpo.length !== 11) return false;
         // Regra 2: O primeiro dígito após DDD deve ser 9
@@ -239,10 +241,10 @@ const htmlMobile = `
         return true;
     }
 
-    // --- VALIDAÇÃO CPF REAL ---
     function validarCPFReal(cpf) {
         cpf = cpf.replace(/[^\d]+/g,'');
         if(cpf == '') return false;
+        // Elimina CPFs invalidos conhecidos
         if (cpf.length != 11 || 
             cpf == "00000000000" || cpf == "11111111111" || 
             cpf == "22222222222" || cpf == "33333333333" || 
@@ -250,11 +252,13 @@ const htmlMobile = `
             cpf == "66666666666" || cpf == "77777777777" || 
             cpf == "88888888888" || cpf == "99999999999")
                 return false;
+        // Valida 1o digito
         let add = 0;
         for (let i=0; i < 9; i ++) add += parseInt(cpf.charAt(i)) * (10 - i);
         let rev = 11 - (add % 11);
         if (rev == 10 || rev == 11) rev = 0;
         if (rev != parseInt(cpf.charAt(9))) return false;
+        // Valida 2o digito
         add = 0;
         for (let i = 0; i < 10; i ++) add += parseInt(cpf.charAt(i)) * (11 - i);
         rev = 11 - (add % 11);
@@ -264,6 +268,7 @@ const htmlMobile = `
     }
 
     function validarEmail(email) {
+        // Regex padrão e remove espaços
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     }
 
@@ -284,10 +289,11 @@ const htmlMobile = `
     });
 
     function enviarCadastro() {
+        // .TRIM() É A SOLUÇÃO MÁGICA PARA ERROS DE ESPAÇO
         const nome = document.getElementById('cNome').value.trim();
-        const zap = document.getElementById('cZap').value;
-        const email = document.getElementById('cEmail').value;
-        const cpf = document.getElementById('cCpf').value;
+        const zap = document.getElementById('cZap').value.trim();
+        const email = document.getElementById('cEmail').value.trim();
+        const cpf = document.getElementById('cCpf').value.trim();
 
         let temErro = false;
 
