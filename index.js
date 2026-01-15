@@ -6,7 +6,9 @@ const QRCode = require('qrcode');
 // IMPORTANTE: Puxa as configurações do seu arquivo config.js
 const campanhas = require('./config');
 
-// 1. HTML TV (Som Local + Alerta + Rodapé Corrigido + Correção de Fundo)
+// ==================================================================
+// 1. HTML TV (Som Local + Alerta + Fundo Corrigido)
+// ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
 <html>
@@ -84,7 +86,7 @@ const htmlTV = `
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; 
         
-        // --- CORREÇÃO AQUI (TROCADO POR CONCATENAÇÃO SIMPLES) ---
+        // CORREÇÃO DE SINTAXE (SEM ERROS)
         bgBlur.style.backgroundImage = "url('" + caminhoImagem + "')";
         
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
@@ -106,7 +108,9 @@ const htmlTV = `
     });
 </script></body></html>`;
 
-// 2. HTML MOBILE (COM TRAVA INTELIGENTE)
+// ==================================================================
+// 2. HTML MOBILE (COM TRAVA DE CADASTRO)
+// ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
 <html>
@@ -172,17 +176,16 @@ const htmlMobile = `
     
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
     
-    // USANDO SOM LOCAL
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
     socket.on('trocar_slide', d => { 
         if (jaPegouHoje) return;
-        if (travadoNoCadastro) return; // MANTÉM A TELA SE ESTIVER DIGITANDO
+        if (travadoNoCadastro) return; 
 
         if(d.modo !== 'intro'){ 
             campanhaAtualId = d.id; 
-            travadoNoCadastro = true; // ATIVA A TRAVA
+            travadoNoCadastro = true; 
             
             document.getElementById('telaCarregando').style.display = 'none';
             document.getElementById('formCadastro').style.display = 'block';
@@ -222,10 +225,14 @@ const htmlMobile = `
     });
 </script></body></html>`;
 
+// ==================================================================
 // 3. HTML CAIXA
+// ==================================================================
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
-// 4. HTML ADMIN
+// ==================================================================
+// 4. HTML ADMIN (Com monitoramento de estoque e baixas)
+// ==================================================================
 const htmlAdmin = `
 <!DOCTYPE html>
 <html>
@@ -243,7 +250,7 @@ const htmlAdmin = `
 </head>
 <body>
     <h1>Painel Admin ⚙️</h1>
-    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo (Com Leads)</a>
+    <a href="/baixar-relatorio" class="btn-down">📥 Baixar Excel Completo (Colorido)</a>
     <div id="lista">Carregando dados...</div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -300,14 +307,54 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// EXCEL COM LEADS
+// ============================================================================
+// NOVO: RELATÓRIO EXCEL ESTILIZADO (HTML TABLE)
+// ============================================================================
 app.get('/baixar-relatorio', (req, res) => {
-    let csv = "\uFEFFDATA,HORA,LOJA,CODIGO,PREMIO,STATUS,NOME,WHATSAPP,EMAIL\n";
-    historicoVendas.forEach(h => { 
-        const nomeLimpo = h.clienteNome ? h.clienteNome.replace(/,/g, '') : '';
-        csv += `${h.data},${h.hora},${h.loja},${h.codigo},${h.premio},${h.status},${nomeLimpo},${h.clienteZap || ''},${h.clienteEmail || ''}\n`; 
+    let tabela = `
+    <html>
+    <head><meta charset="UTF-8"></head>
+    <body style="font-family: Arial, sans-serif;">
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr style="background-color: #333; color: #FFD700; text-align: left;">
+                    <th style="padding: 10px;">DATA</th>
+                    <th style="padding: 10px;">HORA</th>
+                    <th style="padding: 10px;">LOJA</th>
+                    <th style="padding: 10px;">CODIGO</th>
+                    <th style="padding: 10px;">PREMIO</th>
+                    <th style="padding: 10px;">STATUS</th>
+                    <th style="padding: 10px;">NOME DO CLIENTE</th>
+                    <th style="padding: 10px;">WHATSAPP</th>
+                    <th style="padding: 10px;">EMAIL</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    historicoVendas.forEach(h => {
+        // Define cor da linha se for Usado
+        const corStatus = h.status === 'Usado' ? '#e6ffe6' : '#fff';
+        
+        tabela += `
+            <tr style="background-color: ${corStatus};">
+                <td style="padding: 5px;">${h.data}</td>
+                <td style="padding: 5px;">${h.hora}</td>
+                <td style="padding: 5px;">${h.loja}</td>
+                <td style="padding: 5px; font-weight: bold;">${h.codigo}</td>
+                <td style="padding: 5px;">${h.premio}</td>
+                <td style="padding: 5px;">${h.status}</td>
+                <td style="padding: 5px;">${h.clienteNome || '-'}</td>
+                <td style="padding: 5px;">${h.clienteZap || '-'}</td>
+                <td style="padding: 5px;">${h.clienteEmail || '-'}</td>
+            </tr>`;
     });
-    res.header('Content-Type', 'text/csv; charset=utf-8'); res.attachment('relatorio_vendas.csv'); res.send(csv);
+
+    tabela += `</tbody></table></body></html>`;
+
+    // Headers para o navegador entender que é um Excel
+    res.header('Content-Type', 'application/vnd.ms-excel');
+    res.attachment('relatorio_ferrari_completo.xls');
+    res.send(tabela);
 });
 
 const getDadosComBaixas = () => {
