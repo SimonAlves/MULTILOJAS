@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 // IMPORTANTE: Puxa as configurações do seu arquivo config.js
 const campanhas = require('./config');
 
-// 1. HTML TV (Som Local + Alerta)
+// 1. HTML TV (Som Local + Alerta + Rodapé Corrigido)
 const htmlTV = `
 <!DOCTYPE html>
 <html>
@@ -29,11 +29,13 @@ const htmlTV = `
         .cta-text { color: #FFD700; font-weight: 900; font-size: 1.4rem; text-transform: uppercase; margin-top: 5px; }
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
+        
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
         .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; }
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: grayscale(0%); filter: drop-shadow(0 0 5px white); }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
         .pulse { animation: pulse 2s infinite; }
+        
         #overlayVitoria { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FFD700; }
         .animacao-vitoria { animation: zoomIn 0.5s ease-out; }
         @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
@@ -46,6 +48,7 @@ const htmlTV = `
         <h1 class="titulo-vitoria">🎉 TEM GANHADOR! 🎉</h1>
         <h2 class="subtitulo-vitoria" id="textoPremioTV">...</h2>
     </div>
+
     <div id="main-content">
         <div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div>
         <div id="sidebar">
@@ -57,11 +60,13 @@ const htmlTV = `
             <div class="counter-area" id="counterBox"><p class="counter-label" style="text-transform:uppercase; font-size:0.9rem;">Restam Apenas:</p><div id="qtdDisplay" class="counter-number">--</div></div>
         </div>
     </div>
+    
     <div id="footer">
-        \${campanhas.filter(c => c.modo === 'intro').map(c => 
-            \`<div class="patrocinador-item" id="brand-\${c.loja}"><span class="patrocinador-nome" style="color:\${c.cor}">\${c.loja}</span></div>\`
+        ${campanhas.filter(c => c.modo === 'intro').map(c => 
+            `<div class="patrocinador-item" id="brand-${c.loja}"><span class="patrocinador-nome" style="color:${c.cor}">${c.loja}</span></div>`
         ).join('')}
     </div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
@@ -77,7 +82,7 @@ const htmlTV = `
 
     socket.on('trocar_slide', d => {
         const caminhoImagem = '/' + d.arquivo;
-        imgMain.src = caminhoImagem; bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
+        imgMain.src = caminhoImagem; bgBlur.style.backgroundImage = `url('${caminhoImagem}')`;
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
         if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
         else { slideType.innerText = "Sorteio do Dia"; ctaText.innerText = "TENTE A SORTE"; counterBox.style.display = 'block'; qtdDisplay.innerText = d.qtd; document.querySelector('.qr-container').classList.add('pulse'); }
@@ -88,7 +93,7 @@ const htmlTV = `
     socket.on('atualizar_qtd', d => { qtdDisplay.innerText = d.qtd; });
     socket.on('aviso_vitoria_tv', d => {
         const overlay = document.getElementById('overlayVitoria');
-        document.getElementById('textoPremioTV').innerText = \`Acabou de ganhar \${d.premio} na \${d.loja}!\`;
+        document.getElementById('textoPremioTV').innerText = `Acabou de ganhar ${d.premio} na ${d.loja}!`;
         overlay.style.display = 'flex'; overlay.classList.add('animacao-vitoria');
         audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Precisa clicar na TV para ativar som"));
         var duration = 3000; var end = Date.now() + duration;
