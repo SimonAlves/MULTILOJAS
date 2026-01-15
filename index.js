@@ -29,13 +29,11 @@ const htmlTV = `
         .cta-text { color: #FFD700; font-weight: 900; font-size: 1.4rem; text-transform: uppercase; margin-top: 5px; }
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
-        
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
         .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; }
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.2); filter: grayscale(0%); filter: drop-shadow(0 0 5px white); }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 0.8rem; text-transform: uppercase; }
         .pulse { animation: pulse 2s infinite; }
-        
         #overlayVitoria { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FFD700; }
         .animacao-vitoria { animation: zoomIn 0.5s ease-out; }
         @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
@@ -102,7 +100,7 @@ const htmlTV = `
     });
 </script></body></html>`;
 
-// 2. HTML MOBILE (Formulário + Som Local)
+// 2. HTML MOBILE (COM TRAVA INTELIGENTE)
 const htmlMobile = `
 <!DOCTYPE html>
 <html>
@@ -161,8 +159,11 @@ const htmlMobile = `
     const socket=io();
     let jaPegouHoje = false;
     let campanhaAtualId = null; 
+    let travadoNoCadastro = false; // NOVA TRAVA
+
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
+    
     if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
     
     // USANDO SOM LOCAL
@@ -170,11 +171,21 @@ const htmlMobile = `
     audioVitoria.volume = 0.5;
 
     socket.on('trocar_slide', d => { 
-        if(d.modo !== 'intro' && !jaPegouHoje){ 
+        // 1. Se já pegou hoje, ignora tudo.
+        if (jaPegouHoje) return;
+
+        // 2. Se o formulário já está aberto, IGNORA a TV e mantém o cliente onde está.
+        if (travadoNoCadastro) return;
+
+        // 3. Se for um slide de Sorteio (e não estiver travado)
+        if(d.modo !== 'intro'){ 
             campanhaAtualId = d.id; 
+            travadoNoCadastro = true; // ATIVA A TRAVA! O cliente agora "segura" essa loja.
+            
             document.getElementById('telaCarregando').style.display = 'none';
             document.getElementById('formCadastro').style.display = 'block';
-        } else if (d.modo === 'intro' && !jaPegouHoje) {
+        } else {
+             // Se for Intro, mostra carregando
              document.getElementById('telaCarregando').style.display = 'block';
              document.getElementById('formCadastro').style.display = 'none';
              document.getElementById('telaVoucher').style.display = 'none';
@@ -186,6 +197,7 @@ const htmlMobile = `
         const zap = document.getElementById('cZap').value;
         const email = document.getElementById('cEmail').value;
         if(!nome || !zap || !email) { alert("Por favor, preencha todos os campos!"); return; }
+        
         document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
         socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email } });
     }
