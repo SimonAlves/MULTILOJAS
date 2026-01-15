@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (SOM AUTOMÁTICO + RODAPÉ INTELIGENTE)
+// 1. HTML TV (SOM AUTOMÁTICO + RODAPÉ CORRIGIDO)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -129,7 +129,7 @@ const htmlTV = `
 </script></body></html>`;
 
 // ==================================================================
-// 2. HTML MOBILE (VALIDAÇÃO CPF OFICIAL + EMAIL FLEXÍVEL)
+// 2. HTML MOBILE (SÓ NOME E ZAP + ACESSO LIVRE)
 // ==================================================================
 const htmlMobile = `
 <!DOCTYPE html>
@@ -153,7 +153,6 @@ const htmlMobile = `
         .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0,51,153,0.3); }
         .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; transition: 0.3s; }
         .btn-enviar:active { transform: scale(0.95); }
-        .erro-msg { color: #d9534f; font-size: 0.85rem; font-weight: bold; text-align: left; width: 90%; margin: -5px auto 10px auto; display: none; }
     </style>
 </head>
 <body>
@@ -165,20 +164,11 @@ const htmlMobile = `
         
         <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
         
-        <input type="tel" id="cCpf" class="inp-dados" placeholder="Seu CPF (só números)" oninput="mascaraCPF(this)" maxlength="16">
-        <div id="msgErroCpf" class="erro-msg">CPF Inválido!</div>
-
-        <input type="tel" id="cZap" class="inp-dados" placeholder="WhatsApp (DDD + 9 dígitos)" oninput="mascaraZap(this)" maxlength="16">
-        <div id="msgErroZap" class="erro-msg">Número inválido!</div>
-
-        <input type="email" id="cEmail" class="inp-dados" placeholder="Seu E-mail">
-        <div id="msgErroEmail" class="erro-msg">E-mail inválido!</div>
+        <input type="tel" id="cZap" class="inp-dados" placeholder="Seu WhatsApp">
 
         <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button>
         <p style="font-size:0.7rem; color:#999; margin-top:10px;">Seus dados estão seguros. Lei LGPD.</p>
     </div>
-
-    <div id="telaBloqueio" style="display:none; color:#d9534f;"><h1>🚫 Ops!</h1><p>Você já pegou um cupom hoje.<br>Volte amanhã!</p></div>
 
     <div id="telaVoucher" style="display:none">
         <div style="color: #003399; font-size: 1.5rem; font-weight: 900; margin-bottom: 20px;" class="success-header">SUCESSO! 🎉</div>
@@ -191,87 +181,22 @@ const htmlMobile = `
             <div style="font-size: 0.8rem; color: #777; margin-top: 10px;">Gerado em: <span id="dataHora"></span></div>
         </div>
         <button onclick="window.print()" class="btn-print"><span>🖨️</span> IMPRIMIR</button>
+        <button onclick="location.reload()" style="margin-top:15px; background:none; border:none; color:#666; text-decoration:underline; cursor:pointer;">Pegar outro cupom</button>
     </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket=io();
-    let jaPegouHoje = false;
     let campanhaAtualId = null; 
     let travadoNoCadastro = false; 
 
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
-    if(ultimoResgate === hoje){ jaPegouHoje = true; document.getElementById('telaCarregando').style.display='none'; document.getElementById('telaBloqueio').style.display='block'; }
+    // REMOVIDO BLOQUEIO DE localStorage (ILIMITADO)
     
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
-    // --- MÁSCARAS ---
-    function mascaraCPF(i){
-        let v = i.value.replace(/\D/g,"");
-        v=v.replace(/(\d{3})(\d)/,"$1.$2");
-        v=v.replace(/(\d{3})(\d)/,"$1.$2");
-        v=v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
-        i.value = v;
-        document.getElementById('msgErroCpf').style.display = 'none';
-    }
-    
-    function mascaraZap(i){
-        let v = i.value.replace(/\D/g,"");
-        v=v.replace(/^(\d{2})(\d)/g,"($1) $2"); 
-        v=v.replace(/(\d)(\d{4})$/,"$1-$2");
-        i.value = v;
-        document.getElementById('msgErroZap').style.display = 'none';
-    }
-
-    // --- VALIDAÇÃO CPF REAL (ALGORITMO RECEITA FEDERAL) ---
-    function validarCPFReal(cpf) {
-        cpf = cpf.replace(/[^\d]+/g,'');
-        if(cpf == '') return false;
-        // Elimina invalidos conhecidos
-        if (cpf.length != 11 || 
-            cpf == "00000000000" || cpf == "11111111111" || 
-            cpf == "22222222222" || cpf == "33333333333" || 
-            cpf == "44444444444" || cpf == "55555555555" || 
-            cpf == "66666666666" || cpf == "77777777777" || 
-            cpf == "88888888888" || cpf == "99999999999")
-                return false;
-        
-        let soma = 0;
-        let resto;
-        for (let i = 1; i <= 9; i++) 
-            soma = soma + parseInt(cpf.substring(i-1, i)) * (11 - i);
-        resto = (soma * 10) % 11;
-        
-        if ((resto == 10) || (resto == 11))  resto = 0;
-        if (resto != parseInt(cpf.substring(9, 10)) ) return false;
-        
-        soma = 0;
-        for (let i = 1; i <= 10; i++) 
-            soma = soma + parseInt(cpf.substring(i-1, i)) * (12 - i);
-        resto = (soma * 10) % 11;
-        
-        if ((resto == 10) || (resto == 11))  resto = 0;
-        if (resto != parseInt(cpf.substring(10, 11) ) ) return false;
-        
-        return true;
-    }
-
-    function validarCelularReal(cel) {
-        const limpo = cel.replace(/\D/g, '');
-        if (limpo.length !== 11) return false;
-        if (limpo[2] !== '9') return false; // Tem que ter 9
-        return true;
-    }
-
-    function validarEmail(email) {
-        // Validação flexível: precisa ter algo @ algo . algo
-        return /\S+@\S+\.\S+/.test(email);
-    }
-
     socket.on('trocar_slide', d => { 
-        if (jaPegouHoje) return;
+        // Não checa mais se jaPegouHoje
         if (travadoNoCadastro) return; 
 
         if(d.modo !== 'intro'){ 
@@ -287,42 +212,20 @@ const htmlMobile = `
     });
 
     function enviarCadastro() {
-        // .TRIM() REMOVE ESPAÇOS DO CELULAR
-        const nome = document.getElementById('cNome').value.trim();
-        const zap = document.getElementById('cZap').value.trim();
-        const email = document.getElementById('cEmail').value.trim();
-        const cpf = document.getElementById('cCpf').value.trim();
-
-        let temErro = false;
-
-        if(nome.length < 3) { alert("Digite seu nome completo!"); temErro=true; }
-
-        if(!validarCPFReal(cpf)) {
-            document.getElementById('msgErroCpf').style.display = 'block';
-            temErro = true;
-        }
-
-        if(!validarCelularReal(zap)) {
-             document.getElementById('msgErroZap').innerText = "Celular inválido! Precisa DDD + 9 na frente.";
-             document.getElementById('msgErroZap').style.display = 'block';
-             temErro = true;
-        }
-
-        if(!validarEmail(email)) {
-            document.getElementById('msgErroEmail').style.display = 'block';
-            temErro = true;
-        }
-
-        if(temErro) return; 
-
+        const nome = document.getElementById('cNome').value;
+        const zap = document.getElementById('cZap').value;
+        
+        // VALIDAÇÃO SIMPLES (SÓ VAZIO)
+        if(!nome || !zap) { alert("Por favor, preencha Nome e WhatsApp!"); return; }
+        
         audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
 
         document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
-        socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap, email, cpf } });
+        // ENVIA SÓ NOME E ZAP
+        socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap } });
     }
 
     socket.on('sucesso', d => { 
-        jaPegouHoje = true; localStorage.setItem('data_resgate_ferrari', hoje);
         document.getElementById('formCadastro').style.display='none'; 
         document.getElementById('telaVoucher').style.display='block'; 
         document.getElementById('lojaNome').innerText = d.loja; 
@@ -379,14 +282,14 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// RELATÓRIO EXCEL PREMIUM
+// RELATÓRIO EXCEL (LIMPO: SÓ NOME E ZAP)
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
-    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="10" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="10" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">CPF</th><th style="background:#0055aa">ZAP</th><th style="background:#0055aa">EMAIL</th></tr></thead><tbody>`;
+    let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="8" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="8" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">ZAP</th></tr></thead><tbody>`;
     historicoVendas.forEach(h => {
         let bg = h.status === 'Usado' ? '#d4edda' : 'white';
         let style = h.status === 'Usado' ? 'color:green;font-weight:bold' : '';
-        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteCpf}</td><td>${h.clienteZap}</td><td>${h.clienteEmail}</td></tr>`;
+        relatorio += `<tr style="background:${bg}"><td>${h.data}</td><td>${h.hora}</td><td>${h.loja}</td><td><strong>${h.codigo}</strong></td><td>${h.premio}</td><td style="${style}">${h.status}</td><td>${h.clienteNome}</td><td>${h.clienteZap}</td></tr>`;
     });
     relatorio += `</tbody></table></body></html>`;
     res.header('Content-Type', 'application/vnd.ms-excel');
@@ -405,7 +308,7 @@ io.on('connection', (socket) => {
     socket.emit('trocar_slide', campanhas[slideAtual]);
     socket.emit('dados_admin', getDadosComBaixas());
     
-    // RESGATE
+    // RESGATE (LIMPO - SÓ NOME E ZAP)
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {};
@@ -427,9 +330,7 @@ io.on('connection', (socket) => {
                 premio: premio, 
                 status: 'Emitido', 
                 clienteNome: dadosCliente.nome,
-                clienteCpf: dadosCliente.cpf, 
-                clienteZap: dadosCliente.zap, 
-                clienteEmail: dadosCliente.email 
+                clienteZap: dadosCliente.zap
             });
             
             socket.emit('sucesso', { codigo: cod, produto: premio, isGold: isGold, loja: camp.loja }); 
