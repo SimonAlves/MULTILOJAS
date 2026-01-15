@@ -50,7 +50,14 @@ const listaLojas = [
     /* BLOQUEADO (Intro)
     { id: 99, loja: 'CDL', arquivo: "cdl.jpg", modo: 'intro', cor: '#0054a6', ativa: true },
     */
-    { id: 6, loja: 'CDL', arquivo: "cdl50.jpg", modo: 'sorte', cor: '#0054a6', qtd: 50, prefixo: 'CDL', ehSorteio: true }
+    { id: 6, loja: 'CDL', arquivo: "cdl50.jpg", modo: 'sorte', cor: '#0054a6', qtd: 50, prefixo: 'CDL', ehSorteio: true },
+
+
+    // --- LOJA 8: SINCOMERCIO (ADICIONADO) ---
+    /* BLOQUEADO (Intro)
+    { id: 99, loja: 'Sincomercio', arquivo: "sincomercio_intro.jpg", modo: 'intro', cor: '#003366', ativa: true },
+    */
+    { id: 7, loja: 'Sincomercio', arquivo: "sincomercio.jpg", modo: 'sorte', cor: '#003366', qtd: 50, prefixo: 'MED', ehSorteio: true }
 ];
 
 module.exports = listaLojas;
