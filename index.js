@@ -274,7 +274,7 @@ let slideAtual = 0;
 campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
 
 // Rotação de slides (Só troca na TV)
-setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 15000);
+setInterval(() => { slideAtual++; if (slideAtual >= campanhas.length) slideAtual = 0; io.emit('trocar_slide', campanhas[slideAtual]); }, 30000);
 
 function gerarCodigo(prefixo) {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -362,3 +362,4 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Sistema FERRARI + LEADS + SOM OFFLINE rodando na porta ${PORT}`));
+
