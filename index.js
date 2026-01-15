@@ -6,7 +6,7 @@ const QRCode = require('qrcode');
 // IMPORTANTE: Puxa as configurações do seu arquivo config.js
 const campanhas = require('./config');
 
-// 1. HTML TV (Som Local + Alerta + Rodapé Corrigido)
+// 1. HTML TV (Som Local + Alerta + Rodapé Corrigido + Correção de Fundo)
 const htmlTV = `
 <!DOCTYPE html>
 <html>
@@ -84,8 +84,8 @@ const htmlTV = `
         const caminhoImagem = '/' + d.arquivo;
         imgMain.src = caminhoImagem; 
         
-        // CORREÇÃO AQUI: Usando crases (backticks) corretamente
-        bgBlur.style.backgroundImage = \`url('\${caminhoImagem}')\`;
+        // --- CORREÇÃO AQUI (TROCADO POR CONCATENAÇÃO SIMPLES) ---
+        bgBlur.style.backgroundImage = "url('" + caminhoImagem + "')";
         
         sidebar.style.backgroundColor = d.cor; storeName.innerText = d.loja; lojaBox.style.color = d.cor;
         if(d.modo === 'intro') { slideType.innerText = "Conheça a Loja"; ctaText.innerText = "ACESSE AGORA"; counterBox.style.display = 'none'; document.querySelector('.qr-container').classList.remove('pulse'); }
@@ -97,7 +97,7 @@ const htmlTV = `
     socket.on('atualizar_qtd', d => { qtdDisplay.innerText = d.qtd; });
     socket.on('aviso_vitoria_tv', d => {
         const overlay = document.getElementById('overlayVitoria');
-        document.getElementById('textoPremioTV').innerText = \`Acabou de ganhar \${d.premio} na \${d.loja}!\`;
+        document.getElementById('textoPremioTV').innerText = "Acabou de ganhar " + d.premio + " na " + d.loja + "!";
         overlay.style.display = 'flex'; overlay.classList.add('animacao-vitoria');
         audioTv.currentTime = 0; audioTv.play().catch(e => console.log("Precisa clicar na TV para ativar som"));
         var duration = 3000; var end = Date.now() + duration;
@@ -165,7 +165,7 @@ const htmlMobile = `
     const socket=io();
     let jaPegouHoje = false;
     let campanhaAtualId = null; 
-    let travadoNoCadastro = false; // NOVA TRAVA
+    let travadoNoCadastro = false; 
 
     const hoje = new Date().toLocaleDateString('pt-BR');
     const ultimoResgate = localStorage.getItem('data_resgate_ferrari');
@@ -177,21 +177,16 @@ const htmlMobile = `
     audioVitoria.volume = 0.5;
 
     socket.on('trocar_slide', d => { 
-        // 1. Se já pegou hoje, ignora tudo.
         if (jaPegouHoje) return;
+        if (travadoNoCadastro) return; // MANTÉM A TELA SE ESTIVER DIGITANDO
 
-        // 2. Se o formulário já está aberto, IGNORA a TV e mantém o cliente onde está.
-        if (travadoNoCadastro) return;
-
-        // 3. Se for um slide de Sorteio (e não estiver travado)
         if(d.modo !== 'intro'){ 
             campanhaAtualId = d.id; 
-            travadoNoCadastro = true; // ATIVA A TRAVA! O cliente agora "segura" essa loja.
+            travadoNoCadastro = true; // ATIVA A TRAVA
             
             document.getElementById('telaCarregando').style.display = 'none';
             document.getElementById('formCadastro').style.display = 'block';
         } else {
-             // Se for Intro, mostra carregando
              document.getElementById('telaCarregando').style.display = 'block';
              document.getElementById('formCadastro').style.display = 'none';
              document.getElementById('telaVoucher').style.display = 'none';
@@ -230,7 +225,7 @@ const htmlMobile = `
 // 3. HTML CAIXA
 const htmlCaixa = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:Arial;padding:20px;background:#eee;text-align:center} input{padding:15px;font-size:20px;width:80%;text-transform:uppercase;margin:20px 0;border-radius:10px;border:1px solid #ccc} button{padding:15px 30px;font-size:18px;background:#333;color:white;border:none;border-radius:10px;cursor:pointer} .resultado{margin-top:20px;padding:20px;background:white;border-radius:10px;display:none}</style></head><body><h1>📟 Validador</h1><p>Digite o código:</p><input type="text" id="codigoInput" placeholder="Ex: MAX-8888"><br><button onclick="validar()">VERIFICAR</button><div id="resultadoBox" class="resultado"><h2 id="msgRes">...</h2><p id="detalheRes">...</p></div><script src="/socket.io/socket.io.js"></script><script>const socket = io(); function validar(){ const cod = document.getElementById('codigoInput').value; if(cod) socket.emit('validar_cupom', cod); } socket.on('resultado_validacao', d => { const box = document.getElementById('resultadoBox'); box.style.display = 'block'; document.getElementById('msgRes').innerText = d.msg; document.getElementById('msgRes').style.color = d.sucesso ? 'green' : 'red'; document.getElementById('detalheRes').innerText = d.detalhe || ''; });</script></body></html>`;
 
-// 4. HTML ADMIN (Com monitoramento de estoque e baixas)
+// 4. HTML ADMIN
 const htmlAdmin = `
 <!DOCTYPE html>
 <html>
