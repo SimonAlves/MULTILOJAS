@@ -3,7 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
 
-// IMPORTANTE: Aqui ele puxa as configurações do seu arquivo config.js
+// IMPORTANTE: Puxa as configurações do seu arquivo config.js
 const campanhas = require('./config');
 
 // 1. HTML TV (Som Local + Alerta)
@@ -58,8 +58,8 @@ const htmlTV = `
         </div>
     </div>
     <div id="footer">
-        ${campanhas.filter(c => c.modo === 'intro').map(c => 
-            `<div class="patrocinador-item" id="brand-${c.loja}"><span class="patrocinador-nome" style="color:${c.cor}">${c.loja}</span></div>`
+        \${campanhas.filter(c => c.modo === 'intro').map(c => 
+            \`<div class="patrocinador-item" id="brand-\${c.loja}"><span class="patrocinador-nome" style="color:\${c.cor}">\${c.loja}</span></div>\`
         ).join('')}
     </div>
 <script src="/socket.io/socket.io.js"></script>
@@ -69,7 +69,7 @@ const htmlTV = `
     const storeName = document.getElementById('storeName'); const lojaBox = document.querySelector('.loja-box'); const slideType = document.getElementById('slideType');
     const ctaText = document.getElementById('ctaText'); const qtdDisplay = document.getElementById('qtdDisplay'); const counterBox = document.getElementById('counterBox');
     
-    // USANDO SOM LOCAL
+    // SOM LOCAL (SEM FALHAR)
     const audioTv = new Audio('/vitoria.mp3'); 
     audioTv.volume = 1.0; 
     
