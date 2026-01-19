@@ -2,49 +2,54 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const QRCode = require('qrcode');
-const fs = require('fs'); 
+const fs = require('fs');
+const multer = require('multer'); // O Módulo de Upload
+const path = require('path');
 
 // ==================================================================
-// CONFIGURAÇÃO DO BANCO DE DADOS
+// CONFIGURAÇÃO DE UPLOAD (MULTER)
+// ==================================================================
+// Define onde salvar as imagens (pasta public) e o nome delas
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/') // Salva na pasta public
+    },
+    filename: function (req, file, cb) {
+        // Cria um nome único: data-atual + nome-original (para não sobrepor)
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname)); 
+    }
+});
+
+const upload = multer({ storage: storage });
+
+// ==================================================================
+// CARREGA O BANCO DE DADOS
 // ==================================================================
 const DB_FILE = './database.json';
 let campanhas = [];
 
-// Função para carregar dados
 function carregarBanco() {
     try {
         if (fs.existsSync(DB_FILE)) {
-            const data = fs.readFileSync(DB_FILE, 'utf8');
-            campanhas = JSON.parse(data);
+            campanhas = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         } else {
-            // Cria banco padrão se não existir
             campanhas = [{ id: 0, loja: "Exemplo", arquivo: "exemplo.jpg", modo: "sorte", cor: "#333", qtd: 50, prefixo: "EX", ehSorteio: true }];
             salvarBanco();
         }
-    } catch (err) {
-        console.error("Erro ao ler banco:", err);
-        campanhas = [];
-    }
+    } catch (err) { console.error("Erro DB:", err); campanhas = []; }
 }
 
-// Função para salvar dados
 function salvarBanco() {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(campanhas, null, 2));
-        console.log("💾 Banco de dados atualizado.");
-    } catch (err) {
-        console.error("❌ Erro ao salvar banco:", err);
-    }
+    try { fs.writeFileSync(DB_FILE, JSON.stringify(campanhas, null, 2)); } 
+    catch (err) { console.error("Erro Save:", err); }
 }
-
-// Carrega ao iniciar
 carregarBanco();
 
 // ==================================================================
-// FUNÇÃO GERADORA DO PAINEL DE MARKETING (DINÂMICA)
+// 1. HTML PAINEL DE MARKETING (COM UPLOAD)
 // ==================================================================
-// Agora é uma função, para sempre pegar os dados atuais!
-const renderMarketingPage = (listaCampanhas) => `
+const renderMarketingPage = (lista) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -60,11 +65,16 @@ const renderMarketingPage = (listaCampanhas) => `
         .row { display: flex; gap: 10px; margin-bottom: 10px; }
         .col { flex: 1; }
         label { font-weight: bold; font-size: 0.8rem; color: #666; display: block; margin-bottom: 5px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        
+        /* ESTILO DO INPUT DE ARQUIVO */
+        input[type="file"] { background: #fff; padding: 10px; border: 1px dashed #999; width: 100%; border-radius: 5px; }
+        
         .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
         .btn-add { background: #28a745; color: white; width: 100%; }
         .btn-save { background: #007bff; color: white; }
         .btn-tv { background: #333; color: white; text-decoration: none; padding: 10px 15px; border-radius: 5px; }
+        .img-preview { max-height: 50px; border-radius: 5px; vertical-align: middle; margin-right: 10px; border: 1px solid #ccc; }
         @media (max-width: 600px) { .row { flex-direction: column; } }
     </style>
 </head>
@@ -73,10 +83,10 @@ const renderMarketingPage = (listaCampanhas) => `
     
     <div class="card-new">
         <h2 style="color:#155724;margin-top:0">➕ Cadastrar Nova Loja</h2>
-        <form action="/adicionar-loja" method="POST">
+        <form action="/adicionar-loja" method="POST" enctype="multipart/form-data">
             <div class="row">
                 <div class="col"><label>Nome da Loja:</label><input type="text" name="loja" required></div>
-                <div class="col"><label>Nome do Arquivo (Ex: imagem.jpg):</label><input type="text" name="arquivo" required></div>
+                <div class="col"><label>Upload da Imagem:</label><input type="file" name="imagemUpload" required accept="image/*"></div>
             </div>
             <div class="row">
                 <div class="col"><label>Cor do Tema:</label><input type="color" name="cor" value="#000000" style="height:40px"></div>
@@ -86,15 +96,25 @@ const renderMarketingPage = (listaCampanhas) => `
         </form>
     </div>
 
-    <hr><h2 style="color:#666">🖊️ Editar Lojas (${listaCampanhas.length})</h2>
+    <hr><h2 style="color:#666">🖊️ Editar Lojas (${lista.length})</h2>
     
-    ${listaCampanhas.map(loja => `
-        <form action="/salvar-marketing" method="POST" class="card" style="border-left-color: ${loja.cor}">
+    ${lista.map(loja => `
+        <form action="/salvar-marketing" method="POST" enctype="multipart/form-data" class="card" style="border-left-color: ${loja.cor}">
             <input type="hidden" name="id" value="${loja.id}">
-            <h3 style="margin:0; color:${loja.cor}">#${loja.id} - ${loja.loja}</h3><br>
+            <input type="hidden" name="arquivoAtual" value="${loja.arquivo}"> 
+            
+            <div style="display:flex; align-items:center; justify-content:space-between">
+                <h3 style="margin:0; color:${loja.cor}">#${loja.id} - ${loja.loja}</h3>
+                <img src="/${loja.arquivo}" class="img-preview" onerror="this.style.display='none'">
+            </div>
+            <br>
             
             <div class="row">
-                <div class="col"><label>Arquivo de Imagem:</label><input type="text" name="arquivo" value="${loja.arquivo}"></div>
+                <div class="col">
+                    <label>Trocar Imagem (Opcional):</label>
+                    <input type="file" name="imagemUpload" accept="image/*">
+                    <small style="color:#999; font-size:0.7rem">Atual: ${loja.arquivo}</small>
+                </div>
                 <div class="col"><label>Cor:</label><input type="color" name="cor" value="${loja.cor}" style="height:40px"></div>
             </div>
 
@@ -106,7 +126,6 @@ const renderMarketingPage = (listaCampanhas) => `
             <div style="text-align:right;"><button type="submit" class="btn btn-save">SALVAR ALTERAÇÕES</button></div>
         </form>
     `).join('')}
-
 </body></html>`;
 
 // ==================================================================
@@ -155,9 +174,7 @@ function gerarCodigo(prefixo) {
 }
 
 // ROTAS
-// Aqui usamos a função renderMarketingPage(campanhas) para gerar o HTML "fresco"
 app.get('/marketing', (req, res) => res.send(renderMarketingPage(campanhas)));
-
 app.get('/tv', (req, res) => res.send(htmlTV));
 app.get('/mobile', (req, res) => res.send(htmlMobile));
 app.get('/admin', (req, res) => res.send(htmlAdmin));
@@ -165,16 +182,18 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// ROTA ADICIONAR LOJA
-app.post('/adicionar-loja', (req, res) => {
-    const { loja, arquivo, cor, prefixo } = req.body;
-    let novoId = campanhas.length; 
-    if(campanhas.length > 0) novoId = Math.max(...campanhas.map(c => c.id)) + 1;
+// ROTA ADICIONAR LOJA (COM UPLOAD DE IMAGEM)
+app.post('/adicionar-loja', upload.single('imagemUpload'), (req, res) => {
+    const { loja, cor, prefixo } = req.body;
+    let novoId = campanhas.length > 0 ? Math.max(...campanhas.map(c => c.id)) + 1 : 0;
+    
+    // Se fez upload, usa o nome do arquivo. Se não, usa "padrao.jpg"
+    let nomeArquivo = req.file ? req.file.filename : 'padrao.jpg';
 
     const novaLoja = {
         id: novoId,
         loja: loja,
-        arquivo: arquivo,
+        arquivo: nomeArquivo,
         modo: "sorte",
         cor: cor,
         qtd: 50,
@@ -187,22 +206,24 @@ app.post('/adicionar-loja', (req, res) => {
     res.redirect('/marketing');
 });
 
-// ROTA SALVAR EDIÇÃO (CORRIGIDA)
-app.post('/salvar-marketing', (req, res) => {
-    const { id, arquivo, cor, qtd, prefixo } = req.body;
-    
-    // Encontra índice da loja no array (funciona para string ou numero)
-    const index = campanhas.findIndex(c => c.id == id);
+// ROTA SALVAR EDIÇÃO (COM UPLOAD DE IMAGEM OPCIONAL)
+app.post('/salvar-marketing', upload.single('imagemUpload'), (req, res) => {
+    const { id, cor, qtd, prefixo, arquivoAtual } = req.body;
+    let idNum = parseInt(id);
+    let index = campanhas.findIndex(c => c.id == idNum);
     
     if(index > -1) {
-        campanhas[index].arquivo = arquivo;
+        // Se enviou nova imagem, usa a nova. Se não, mantem a antiga.
+        let imagemFinal = req.file ? req.file.filename : arquivoAtual;
+
+        campanhas[index].arquivo = imagemFinal;
         campanhas[index].cor = cor;
-        campanhas[index].qtd = Number(qtd); // Garante número
+        campanhas[index].qtd = parseInt(qtd);
         campanhas[index].prefixo = prefixo;
         
         salvarBanco();
         io.emit('atualizar_banco_dados', campanhas);
-        res.redirect('/marketing'); // Recarrega a página com dados novos
+        res.redirect('/marketing');
     } else {
         res.send('Erro: Loja não encontrada.');
     }
