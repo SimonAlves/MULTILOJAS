@@ -5,7 +5,7 @@ const QRCode = require('qrcode');
 const fs = require('fs'); 
 
 // ==================================================================
-// CARREGA O BANCO DE DADOS
+// FUNÇÕES DE BANCO DE DADOS (LEITURA E ESCRITA ROBUSTA)
 // ==================================================================
 let campanhas = [];
 const DB_FILE = './database.json';
@@ -15,12 +15,14 @@ function carregarBanco() {
         if (fs.existsSync(DB_FILE)) {
             const data = fs.readFileSync(DB_FILE, 'utf8');
             campanhas = JSON.parse(data);
+            console.log(`✅ Banco de dados carregado com ${campanhas.length} lojas.`);
         } else {
             campanhas = [{ id: 0, loja: "Exemplo", arquivo: "exemplo.jpg", modo: "sorte", cor: "#333", qtd: 50, prefixo: "EX", ehSorteio: true }];
             salvarBanco();
+            console.log("⚠️ Banco novo criado.");
         }
     } catch (err) {
-        console.error("Erro ao carregar banco:", err);
+        console.error("❌ Erro fatal ao ler banco:", err);
         campanhas = [];
     }
 }
@@ -28,12 +30,13 @@ function carregarBanco() {
 function salvarBanco() {
     try {
         fs.writeFileSync(DB_FILE, JSON.stringify(campanhas, null, 2));
+        console.log("💾 Alterações salvas no arquivo database.json");
     } catch (err) {
-        console.error("Erro ao salvar banco:", err);
+        console.error("❌ Erro ao escrever no disco:", err);
     }
 }
 
-// Carrega inicial
+// Carrega os dados ao iniciar
 carregarBanco();
 
 // ==================================================================
@@ -85,9 +88,7 @@ const htmlMarketing = `
     <div id="containerLojas"></div>
 
     <script>
-        // Pega os dados mais recentes do servidor
         let dados = ${JSON.stringify(campanhas)};
-        
         function renderizar() {
             const container = document.getElementById('containerLojas');
             let html = '';
@@ -96,17 +97,14 @@ const htmlMarketing = `
                 <form action="/salvar-marketing" method="POST" class="card" style="border-left-color: \${loja.cor}">
                     <input type="hidden" name="id" value="\${loja.id}">
                     <h3 style="margin:0; color:\${loja.cor}">#\${loja.id} - \${loja.loja}</h3><br>
-                    
                     <div class="row">
                         <div class="col"><label>Arquivo de Imagem:</label><input type="text" name="arquivo" value="\${loja.arquivo}"></div>
                         <div class="col"><label>Cor:</label><input type="color" name="cor" value="\${loja.cor}" style="height:40px"></div>
                     </div>
-
                     <div class="row">
                         <div class="col"><label>Qtd Prêmios:</label><input type="number" name="qtd" value="\${loja.qtd}"></div>
                         <div class="col"><label>Prefixo:</label><input type="text" name="prefixo" value="\${loja.prefixo}"></div>
                     </div>
-                    
                     <div style="text-align:right;"><button type="submit" class="btn btn-save">SALVAR ALTERAÇÕES</button></div>
                 </form>\`;
             });
@@ -194,24 +192,27 @@ app.post('/adicionar-loja', (req, res) => {
     res.redirect('/marketing');
 });
 
-// ROTA SALVAR EDIÇÃO (CORRIGIDA: == PARA FLEXIBILIDADE ID STRING/NUMBER)
+// ROTA SALVAR EDIÇÃO (CORRIGIDA: == E FINDINDEX)
 app.post('/salvar-marketing', (req, res) => {
     const { id, arquivo, cor, qtd, prefixo } = req.body;
+    console.log("Tentando salvar...", req.body); // Log de diagnóstico
+
+    // O PULO DO GATO: findIndex com igualdade solta (==) acha string ou numero
+    const index = campanhas.findIndex(c => c.id == id);
     
-    // USANDO == PARA COMPARAR "1" COM 1 (RESOLVE O PROBLEMA DE NÃO SALVAR)
-    let lojaAlvo = campanhas.find(c => c.id == id);
-    
-    if(lojaAlvo) {
-        lojaAlvo.arquivo = arquivo;
-        lojaAlvo.cor = cor;
-        lojaAlvo.qtd = parseInt(qtd); // Garante que é número
-        lojaAlvo.prefixo = prefixo;
+    if(index > -1) {
+        campanhas[index].arquivo = arquivo;
+        campanhas[index].cor = cor;
+        campanhas[index].qtd = Number(qtd); // Garante que vira número
+        campanhas[index].prefixo = prefixo;
         
         salvarBanco();
         io.emit('atualizar_banco_dados', campanhas);
+        console.log("Sucesso! Loja atualizada:", campanhas[index]);
         res.redirect('/marketing');
     } else {
-        res.send(`<h1>Erro ao salvar: ID ${id} não encontrado.</h1>`);
+        console.log("ERRO: ID não encontrado.");
+        res.send('Erro: Loja não encontrada.');
     }
 });
 
@@ -245,6 +246,7 @@ io.on('connection', (socket) => {
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {};
+        // Procura também com == para garantir
         let camp = campanhas.find(c => c.id == id); 
         
         if (camp) { 
