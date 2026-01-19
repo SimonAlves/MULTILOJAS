@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const campanhas = require('./config');
 
 // ==================================================================
-// 1. HTML TV (SOM AUTOMÁTICO + RODAPÉ CORRIGIDO)
+// 1. HTML TV (INTELIGENTE: GIRA SOZINHO VERTICAL/HORIZONTAL)
 // ==================================================================
 const htmlTV = `
 <!DOCTYPE html>
@@ -17,12 +17,19 @@ const htmlTV = `
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
+        /* CONFIGURAÇÃO GERAL */
         body { margin: 0; background: black; overflow: hidden; font-family: 'Montserrat', sans-serif; height: 100vh; display: flex; flex-direction: column; }
-        #main-content { flex: 1; display: flex; width: 100%; height: 85vh; }
+        
+        /* LAYOUT PADRÃO (HORIZONTAL / LANDSCAPE) */
+        #main-content { flex: 1; display: flex; width: 100%; height: 85vh; flex-direction: row; }
+        
         #areaImagem { flex: 3; position: relative; background-color: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         #imgPrincipal { max-width: 100%; max-height: 100%; object-fit: contain; z-index: 2; display: block; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         #fundoDesfocado { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; filter: blur(30px) brightness(0.4); z-index: 1; }
+        
         #sidebar { flex: 1; background: #222; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; color: white; padding: 20px; text-align: center; box-shadow: -10px 0 30px rgba(0,0,0,0.5); z-index: 10; transition: background-color 0.5s ease; }
+        
+        /* ELEMENTOS DA SIDEBAR */
         .loja-box { background: white; color: #222; padding: 10px 20px; border-radius: 50px; margin-bottom: 10px; width: 90%; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         .loja-nome { font-size: 1.5rem; font-weight: 900; text-transform: uppercase; margin: 0; line-height: 1.1; }
         .oferta-titulo { font-size: 1.8rem; font-weight: 700; margin: 0; line-height: 1.2; text-shadow: 1px 1px 2px rgba(0,0,0,0.3); }
@@ -32,16 +39,43 @@ const htmlTV = `
         .divider { width: 90%; border-top: 2px dashed rgba(255,255,255,0.3); margin: 10px 0; }
         .counter-number { font-size: 6rem; font-weight: 900; color: #FFD700; line-height: 0.9; margin-top: 5px; text-shadow: 3px 3px 0px rgba(0,0,0,0.3); }
         
+        /* RODAPÉ */
         #footer { height: 15vh; background: #111; border-top: 4px solid #FFD700; display:flex; align-items:center; justify-content:space-around; padding:0 10px; z-index:20; }
         .patrocinador-item { opacity: 0.4; transition: all 0.5s; filter: grayscale(100%); display:flex; align-items:center; transform: scale(0.9); }
         .patrocinador-item.ativo { opacity: 1; transform: scale(1.3); filter: grayscale(0%); filter: drop-shadow(0 0 8px white); font-weight: bold; }
         .patrocinador-nome { color: white; font-weight: bold; font-size: 1rem; text-transform: uppercase; margin: 0 10px; }
         
         .pulse { animation: pulse 2s infinite; }
-        
         #overlayVitoria { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #FFD700; }
         .animacao-vitoria { animation: zoomIn 0.5s ease-out; }
         @keyframes zoomIn { from {transform: scale(0);} to {transform: scale(1);} }
+
+        /* ======================================================== */
+        /* MODO VERTICAL (QUANDO A TV ESTÁ EM PÉ - PORTRAIT)       */
+        /* ======================================================== */
+        @media (orientation: portrait) {
+            #main-content {
+                flex-direction: column; /* Muda para um em cima do outro */
+            }
+            #areaImagem {
+                flex: 1.2; /* Imagem ocupa um pouco mais da metade superior */
+                width: 100%;
+                border-bottom: 5px solid #FFD700;
+            }
+            #sidebar {
+                flex: 1; /* Barra ocupa a parte inferior */
+                width: 100%;
+                box-shadow: 0 -10px 30px rgba(0,0,0,0.5); /* Sombra invertida */
+                padding: 10px 0;
+            }
+            #footer {
+                height: 10vh; /* Rodapé um pouco menor na vertical */
+            }
+            /* Ajustes de tamanho para ficar bonito na vertical */
+            .loja-nome { font-size: 2.5rem; }
+            .counter-number { font-size: 7rem; }
+            .qr-container { width: 40%; } /* QR Code menor para caber */
+        }
     </style>
 </head>
 <body>
@@ -146,9 +180,7 @@ const htmlMobile = `
         .btn-print { background: #333; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         .loader { border: 5px solid #f3f3f3; border-top: 5px solid #333; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
-        
         #formCadastro { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; }
-        
         .inp-dados { width: 90%; padding: 15px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; outline: none; transition: 0.3s; }
         .inp-dados:focus { border-color: #003399; box-shadow: 0 0 5px rgba(0,51,153,0.3); }
         .btn-enviar { background: #28a745; color: white; font-weight: bold; font-size: 18px; border: none; padding: 15px; width: 100%; border-radius: 5px; cursor: pointer; transition: 0.3s; }
@@ -161,11 +193,8 @@ const htmlMobile = `
     <div id="formCadastro">
         <h2 style="color:#333;">🎉 Quase lá!</h2>
         <p>Preencha para liberar o prêmio:</p>
-        
         <input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo">
-        
         <input type="tel" id="cZap" class="inp-dados" placeholder="Seu WhatsApp">
-
         <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button>
         <p style="font-size:0.7rem; color:#999; margin-top:10px;">Seus dados estão seguros. Lei LGPD.</p>
     </div>
@@ -190,13 +219,12 @@ const htmlMobile = `
     let campanhaAtualId = null; 
     let travadoNoCadastro = false; 
 
-    // REMOVIDO BLOQUEIO DE localStorage (ILIMITADO)
+    // BLOQUEIO DESATIVADO
     
     const audioVitoria = new Audio('/vitoria.mp3'); 
     audioVitoria.volume = 0.5;
 
     socket.on('trocar_slide', d => { 
-        // Não checa mais se jaPegouHoje
         if (travadoNoCadastro) return; 
 
         if(d.modo !== 'intro'){ 
@@ -215,13 +243,11 @@ const htmlMobile = `
         const nome = document.getElementById('cNome').value;
         const zap = document.getElementById('cZap').value;
         
-        // VALIDAÇÃO SIMPLES (SÓ VAZIO)
-        if(!nome || !zap) { alert("Por favor, preencha Nome e WhatsApp!"); return; }
+        if(!nome || !zap) { alert("Por favor, preencha todos os campos!"); return; }
         
         audioVitoria.play().then(() => { audioVitoria.pause(); audioVitoria.currentTime = 0; }).catch(e => console.log(e));
 
         document.getElementById('formCadastro').innerHTML = "<h2>Validando...</h2><div class='loader'></div>";
-        // ENVIA SÓ NOME E ZAP
         socket.emit('resgatar_oferta', { id: campanhaAtualId, cliente: { nome, zap } });
     }
 
@@ -329,7 +355,7 @@ io.on('connection', (socket) => {
                 codigo: cod, 
                 premio: premio, 
                 status: 'Emitido', 
-                clienteNome: dadosCliente.nome,
+                clienteNome: dadosCliente.nome, 
                 clienteZap: dadosCliente.zap
             });
             
