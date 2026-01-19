@@ -1,0 +1,82 @@
+[
+  {
+    "id": 0,
+    "loja": "OticaMax",
+    "arquivo": "otica50.jpg",
+    "modo": "sorte",
+    "cor": "#FFD700",
+    "qtd": 20,
+    "prefixo": "MAX",
+    "ehSorteio": true
+  },
+  {
+    "id": 1,
+    "loja": "Hortifruti",
+    "arquivo": "hortfrut50.jpg",
+    "modo": "sorte",
+    "cor": "#2E7D32",
+    "qtd": 30,
+    "prefixo": "HORT",
+    "ehSorteio": true
+  },
+  {
+    "id": 2,
+    "loja": "Magalu",
+    "arquivo": "magazineluiza50.jpg",
+    "modo": "sorte",
+    "cor": "#0086FF",
+    "qtd": 15,
+    "prefixo": "MGL",
+    "ehSorteio": true
+  },
+  {
+    "id": 3,
+    "loja": "Construcao",
+    "arquivo": "construcao.jpg",
+    "modo": "sorte",
+    "cor": "#E65100",
+    "qtd": 10,
+    "prefixo": "OBRA",
+    "ehSorteio": true
+  },
+  {
+    "id": 4,
+    "loja": "Calcados",
+    "arquivo": "calcados.jpg",
+    "modo": "sorte",
+    "cor": "#D50000",
+    "qtd": 40,
+    "prefixo": "PE",
+    "ehSorteio": true
+  },
+  {
+    "id": 5,
+    "loja": "Floricultura",
+    "arquivo": "floricultura-sorte.jpg",
+    "modo": "sorte",
+    "cor": "#C2185B",
+    "qtd": 15,
+    "prefixo": "FLOR",
+    "ehSorteio": true
+  },
+  {
+    "id": 6,
+    "loja": "CDL",
+    "arquivo": "cdl50.jpg",
+    "modo": "sorte",
+    "cor": "#0054a6",
+    "qtd": 50,
+    "prefixo": "CDL",
+    "ehSorteio": true
+  },
+  {
+    "id": 7,
+    "loja": "Sincomercio",
+    "arquivo": "sincomercio.jpg",
+    "modo": "sorte",
+    "cor": "#003366",
+    "qtd": 50,
+    "prefixo": "MED",
+    "ehSorteio": true
+  }
+]
