@@ -5,44 +5,46 @@ const QRCode = require('qrcode');
 const fs = require('fs'); 
 
 // ==================================================================
-// FUNÇÕES DE BANCO DE DADOS (LEITURA E ESCRITA ROBUSTA)
+// CONFIGURAÇÃO DO BANCO DE DADOS
 // ==================================================================
-let campanhas = [];
 const DB_FILE = './database.json';
+let campanhas = [];
 
+// Função para carregar dados
 function carregarBanco() {
     try {
         if (fs.existsSync(DB_FILE)) {
             const data = fs.readFileSync(DB_FILE, 'utf8');
             campanhas = JSON.parse(data);
-            console.log(`✅ Banco de dados carregado com ${campanhas.length} lojas.`);
         } else {
+            // Cria banco padrão se não existir
             campanhas = [{ id: 0, loja: "Exemplo", arquivo: "exemplo.jpg", modo: "sorte", cor: "#333", qtd: 50, prefixo: "EX", ehSorteio: true }];
             salvarBanco();
-            console.log("⚠️ Banco novo criado.");
         }
     } catch (err) {
-        console.error("❌ Erro fatal ao ler banco:", err);
+        console.error("Erro ao ler banco:", err);
         campanhas = [];
     }
 }
 
+// Função para salvar dados
 function salvarBanco() {
     try {
         fs.writeFileSync(DB_FILE, JSON.stringify(campanhas, null, 2));
-        console.log("💾 Alterações salvas no arquivo database.json");
+        console.log("💾 Banco de dados atualizado.");
     } catch (err) {
-        console.error("❌ Erro ao escrever no disco:", err);
+        console.error("❌ Erro ao salvar banco:", err);
     }
 }
 
-// Carrega os dados ao iniciar
+// Carrega ao iniciar
 carregarBanco();
 
 // ==================================================================
-// 1. HTML PAINEL DE MARKETING
+// FUNÇÃO GERADORA DO PAINEL DE MARKETING (DINÂMICA)
 // ==================================================================
-const htmlMarketing = `
+// Agora é uma função, para sempre pegar os dados atuais!
+const renderMarketingPage = (listaCampanhas) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -84,40 +86,33 @@ const htmlMarketing = `
         </form>
     </div>
 
-    <hr><h2 style="color:#666">🖊️ Editar Lojas</h2>
-    <div id="containerLojas"></div>
+    <hr><h2 style="color:#666">🖊️ Editar Lojas (${listaCampanhas.length})</h2>
+    
+    ${listaCampanhas.map(loja => `
+        <form action="/salvar-marketing" method="POST" class="card" style="border-left-color: ${loja.cor}">
+            <input type="hidden" name="id" value="${loja.id}">
+            <h3 style="margin:0; color:${loja.cor}">#${loja.id} - ${loja.loja}</h3><br>
+            
+            <div class="row">
+                <div class="col"><label>Arquivo de Imagem:</label><input type="text" name="arquivo" value="${loja.arquivo}"></div>
+                <div class="col"><label>Cor:</label><input type="color" name="cor" value="${loja.cor}" style="height:40px"></div>
+            </div>
 
-    <script>
-        let dados = ${JSON.stringify(campanhas)};
-        function renderizar() {
-            const container = document.getElementById('containerLojas');
-            let html = '';
-            dados.forEach((loja) => {
-                html += \`
-                <form action="/salvar-marketing" method="POST" class="card" style="border-left-color: \${loja.cor}">
-                    <input type="hidden" name="id" value="\${loja.id}">
-                    <h3 style="margin:0; color:\${loja.cor}">#\${loja.id} - \${loja.loja}</h3><br>
-                    <div class="row">
-                        <div class="col"><label>Arquivo de Imagem:</label><input type="text" name="arquivo" value="\${loja.arquivo}"></div>
-                        <div class="col"><label>Cor:</label><input type="color" name="cor" value="\${loja.cor}" style="height:40px"></div>
-                    </div>
-                    <div class="row">
-                        <div class="col"><label>Qtd Prêmios:</label><input type="number" name="qtd" value="\${loja.qtd}"></div>
-                        <div class="col"><label>Prefixo:</label><input type="text" name="prefixo" value="\${loja.prefixo}"></div>
-                    </div>
-                    <div style="text-align:right;"><button type="submit" class="btn btn-save">SALVAR ALTERAÇÕES</button></div>
-                </form>\`;
-            });
-            container.innerHTML = html;
-        }
-        renderizar();
-    </script>
+            <div class="row">
+                <div class="col"><label>Qtd Prêmios:</label><input type="number" name="qtd" value="${loja.qtd}"></div>
+                <div class="col"><label>Prefixo:</label><input type="text" name="prefixo" value="${loja.prefixo}"></div>
+            </div>
+            
+            <div style="text-align:right;"><button type="submit" class="btn btn-save">SALVAR ALTERAÇÕES</button></div>
+        </form>
+    `).join('')}
+
 </body></html>`;
 
 // ==================================================================
-// 2. HTML TV
+// 2. HTML TV 
 // ==================================================================
-const htmlTV = `<!DOCTYPE html><html><head><title>TV OFERTAS</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script><style>body{margin:0;background:black;overflow:hidden;font-family:'Montserrat',sans-serif;height:100vh;display:flex;flex-direction:column}#main-content{flex:1;display:flex;width:100%;height:85vh}#areaImagem{flex:3;position:relative;background-color:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}#imgPrincipal{max-width:100%;max-height:100%;object-fit:contain;z-index:2;display:block;box-shadow:0 0 50px rgba(0,0,0,0.5)}#fundoDesfocado{position:absolute;top:0;left:0;width:100%;height:100%;background-size:cover;background-position:center;filter:blur(30px)brightness(0.4);z-index:1}#sidebar{flex:1;background:#222;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;color:white;padding:20px;text-align:center;box-shadow:-10px 0 30px rgba(0,0,0,0.5);z-index:10;transition:background-color 0.5s ease}.loja-box{background:white;color:#222;padding:10px 20px;border-radius:50px;margin-bottom:10px;width:90%;box-shadow:0 5px 15px rgba(0,0,0,0.2)}.loja-nome{font-size:1.5rem;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1}.oferta-titulo{font-size:1.8rem;font-weight:700;margin:0;line-height:1.2;text-shadow:1px 1px 2px rgba(0,0,0,0.3)}.qr-container{background:white;padding:15px;border-radius:20px;width:80%;margin:10px auto;box-shadow:0 10px 25px rgba(0,0,0,0.3)}.qr-container img{width:100%;display:block}.cta-text{color:#FFD700;font-weight:900;font-size:1.4rem;text-transform:uppercase;margin-top:5px}.divider{width:90%;border-top:2px dashed rgba(255,255,255,0.3);margin:10px 0}.counter-number{font-size:6rem;font-weight:900;color:#FFD700;line-height:0.9;margin-top:5px;text-shadow:3px 3px 0px rgba(0,0,0,0.3)}#footer{height:15vh;background:#111;border-top:4px solid #FFD700;display:flex;align-items:center;justify-content:space-around;padding:0 10px;z-index:20}.patrocinador-item{opacity:0.4;transition:all 0.5s;filter:grayscale(100%);display:flex;align-items:center;transform:scale(0.9)}.patrocinador-item.ativo{opacity:1;transform:scale(1.3);filter:grayscale(0%);filter:drop-shadow(0 0 8px white);font-weight:bold}.patrocinador-nome{color:white;font-weight:bold;font-size:1rem;text-transform:uppercase;margin:0 10px}.pulse{animation:pulse 2s infinite}#overlayVitoria{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#FFD700}.animacao-vitoria{animation:zoomIn 0.5s ease-out}@keyframes zoomIn{from{transform:scale(0)}to{transform:scale(1)}}@media(orientation:portrait){#main-content{flex-direction:column}#areaImagem{flex:1.2;width:100%;border-bottom:5px solid #FFD700}#sidebar{flex:1;width:100%;box-shadow:0 -10px 30px rgba(0,0,0,0.5);padding:10px 0}#footer{height:10vh}.loja-nome{font-size:2.5rem}.counter-number{font-size:7rem}.qr-container{width:40%}}</style></head><body><div id="overlayVitoria"><h1 style="font-size:5rem;font-weight:900;text-transform:uppercase;margin:0;color:#fff;text-shadow:0 0 20px #FFD700">🎉 TEM GANHADOR! 🎉</h1><h2 style="font-size:3rem;margin-top:20px;color:#FFD700" id="textoPremioTV">...</h2></div><div id="main-content"><div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div><div id="sidebar"><div class="loja-box"><h1 id="storeName" class="loja-nome">LOJA</h1></div><h2 id="slideType" class="oferta-titulo">Oferta Especial</h2><div class="qr-container pulse"><img id="qrCode" src="qrcode.png"></div><div id="ctaText" class="cta-text">GARANTA O SEU</div><div class="divider"></div><div class="counter-area" id="counterBox"><p class="counter-label" style="text-transform:uppercase;font-size:0.9rem">Restam Apenas:</p><div id="qtdDisplay" class="counter-number">--</div></div></div></div><div id="footer"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();const imgMain=document.getElementById('imgPrincipal');const bgBlur=document.getElementById('fundoDesfocado');const sidebar=document.getElementById('sidebar');const storeName=document.getElementById('storeName');const lojaBox=document.querySelector('.loja-box');const slideType=document.getElementById('slideType');const ctaText=document.getElementById('ctaText');const qtdDisplay=document.getElementById('qtdDisplay');const counterBox=document.getElementById('counterBox');const footer=document.getElementById('footer');const audioTv=new Audio('/vitoria.mp3');audioTv.volume=1.0;function forcarDesbloqueio(){if(audioTv.paused){audioTv.play().then(()=>{audioTv.pause();audioTv.currentTime=0;console.log("Audio desbloqueado!");document.removeEventListener('click',forcarDesbloqueio);document.removeEventListener('keydown',forcarDesbloqueio);document.removeEventListener('mousemove',forcarDesbloqueio)}).catch(e=>{console.log("Ainda bloqueado")})}}document.addEventListener('click',forcarDesbloqueio);document.addEventListener('keydown',forcarDesbloqueio);window.onload=forcarDesbloqueio;socket.on('atualizar_banco_dados',novaLista=>{location.reload()});socket.on('trocar_slide',d=>{const caminhoImagem='/'+d.arquivo;imgMain.src=caminhoImagem;bgBlur.style.backgroundImage="url('"+caminhoImagem+"')";sidebar.style.backgroundColor=d.cor;storeName.innerText=d.loja;lojaBox.style.color=d.cor;slideType.innerText="Sorteio do Dia";ctaText.innerText="TENTE A SORTE";counterBox.style.display='block';qtdDisplay.innerText=d.qtd;document.querySelector('.qr-container').classList.add('pulse');footer.innerHTML='';d.todasLojas.forEach(loja=>{let ativoClass=(loja.loja===d.loja)?'ativo':'';footer.innerHTML+='<div class="patrocinador-item '+ativoClass+'"><span class="patrocinador-nome" style="color:'+loja.cor+'">'+loja.loja+'</span></div>'});fetch('/qrcode').then(r=>r.text()).then(u=>document.getElementById('qrCode').src=u)});socket.on('atualizar_qtd',d=>{qtdDisplay.innerText=d.qtd});socket.on('aviso_vitoria_tv',d=>{const overlay=document.getElementById('overlayVitoria');document.getElementById('textoPremioTV').innerText="Acabou de ganhar "+d.premio+" na "+d.loja+"!";overlay.style.display='flex';overlay.classList.add('animacao-vitoria');audioTv.currentTime=0;audioTv.play().catch(e=>console.log("Som bloqueado pelo navegador"));var duration=3000;var end=Date.now()+duration;(function frame(){confetti({particleCount:5,angle:60,spread:55,origin:{x:0}});confetti({particleCount:5,angle:120,spread:55,origin:{x:1}});if(Date.now()<end)requestAnimationFrame(frame)}());setTimeout(()=>{overlay.style.display='none'},6000)});</script></body></html>`;
+const htmlTV = `<!DOCTYPE html><html><head><title>TV OFERTAS</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script><style>body{margin:0;background:black;overflow:hidden;font-family:'Montserrat',sans-serif;height:100vh;display:flex;flex-direction:column}#main-content{flex:1;display:flex;width:100%;height:85vh}#areaImagem{flex:3;position:relative;background-color:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}#imgPrincipal{max-width:100%;max-height:100%;object-fit:contain;z-index:2;display:block;box-shadow:0 0 50px rgba(0,0,0,0.5)}#fundoDesfocado{position:absolute;top:0;left:0;width:100%;height:100%;background-size:cover;background-position:center;filter:blur(30px)brightness(0.4);z-index:1}#sidebar{flex:1;background:#222;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;color:white;padding:20px;text-align:center;box-shadow:-10px 0 30px rgba(0,0,0,0.5);z-index:10;transition:background-color 0.5s ease}.loja-box{background:white;color:#222;padding:10px 20px;border-radius:50px;margin-bottom:10px;width:90%;box-shadow:0 5px 15px rgba(0,0,0,0.2)}.loja-nome{font-size:1.5rem;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1}.oferta-titulo{font-size:1.8rem;font-weight:700;margin:0;line-height:1.2;text-shadow:1px 1px 2px rgba(0,0,0,0.3)}.qr-container{background:white;padding:15px;border-radius:20px;width:80%;margin:10px auto;box-shadow:0 10px 25px rgba(0,0,0,0.3)}.qr-container img{width:100%;display:block}.cta-text{color:#FFD700;font-weight:900;font-size:1.4rem;text-transform:uppercase;margin-top:5px}.divider{width:90%;border-top:2px dashed rgba(255,255,255,0.3);margin:10px 0}.counter-number{font-size:6rem;font-weight:900;color:#FFD700;line-height:0.9;margin-top:5px;text-shadow:3px 3px 0px rgba(0,0,0,0.3)}#footer{height:15vh;background:#111;border-top:4px solid #FFD700;display:flex;align-items:center;justify-content:space-around;padding:0 10px;z-index:20}.patrocinador-item{opacity:0.4;transition:all 0.5s;filter:grayscale(100%);display:flex;align-items:center;transform:scale(0.9)}.patrocinador-item.ativo{opacity:1;transform:scale(1.3);filter:grayscale(0%);filter:drop-shadow(0 0 8px white);font-weight:bold}.patrocinador-nome{color:white;font-weight:bold;font-size:1rem;text-transform:uppercase;margin:0 10px}.pulse{animation:pulse 2s infinite}#overlayVitoria{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#FFD700}.animacao-vitoria{animation:zoomIn 0.5s ease-out}@keyframes zoomIn{from{transform:scale(0)}to{transform:scale(1)}}@media(orientation:portrait){#main-content{flex-direction:column}#areaImagem{flex:1.2;width:100%;border-bottom:5px solid #FFD700}#sidebar{flex:1;width:100%;box-shadow:0 -10px 30px rgba(0,0,0,0.5);padding:10px 0}#footer{height:10vh}.loja-nome{font-size:2.5rem}.counter-number{font-size:7rem}.qr-container{width:40%}}</style></head><body><div id="overlayVitoria"><h1 style="font-size:5rem;font-weight:900;text-transform:uppercase;margin:0;color:#fff;text-shadow:0 0 20px #FFD700">🎉 TEM GANHADOR! 🎉</h1><h2 style="font-size:3rem;margin-top:20px;color:#FFD700" id="textoPremioTV">...</h2></div><div id="main-content"><div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div><div id="sidebar"><div class="loja-box"><h1 id="storeName" class="loja-nome">LOJA</h1></div><h2 id="slideType" class="oferta-titulo">Oferta Especial</h2><div class="qr-container pulse"><img id="qrCode" src="qrcode.png"></div><div id="ctaText" class="cta-text">GARANTA O SEU</div><div class="divider"></div><div class="counter-area" id="counterBox"><p class="counter-label" style="text-transform:uppercase;font-size:0.9rem">Restam Apenas:</p><div id="qtdDisplay" class="counter-number">--</div></div></div></div><div id="footer"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();const imgMain=document.getElementById('imgPrincipal');const bgBlur=document.getElementById('fundoDesfocado');const sidebar=document.getElementById('sidebar');const storeName=document.getElementById('storeName');const lojaBox=document.querySelector('.loja-box');const slideType=document.getElementById('slideType');const ctaText=document.getElementById('ctaText');const qtdDisplay=document.getElementById('qtdDisplay');const counterBox=document.getElementById('counterBox');const footer=document.getElementById('footer');const audioTv=new Audio('/vitoria.mp3');audioTv.volume=1.0;function forcarDesbloqueio(){if(audioTv.paused){audioTv.play().then(()=>{audioTv.pause();audioTv.currentTime=0;console.log("Audio desbloqueado!");document.removeEventListener('click',forcarDesbloqueio);document.removeEventListener('keydown',forcarDesbloqueio);document.removeEventListener('mousemove',forcarDesbloqueio)}).catch(e=>{console.log("Ainda bloqueado")})}}document.addEventListener('click',forcarDesbloqueio);document.addEventListener('keydown',forcarDesbloqueio);document.addEventListener('mousemove',forcarDesbloqueio);window.onload=forcarDesbloqueio;socket.on('atualizar_banco_dados',novaLista=>{location.reload()});socket.on('trocar_slide',d=>{const caminhoImagem='/'+d.arquivo;imgMain.src=caminhoImagem;bgBlur.style.backgroundImage="url('"+caminhoImagem+"')";sidebar.style.backgroundColor=d.cor;storeName.innerText=d.loja;lojaBox.style.color=d.cor;slideType.innerText="Sorteio do Dia";ctaText.innerText="TENTE A SORTE";counterBox.style.display='block';qtdDisplay.innerText=d.qtd;document.querySelector('.qr-container').classList.add('pulse');footer.innerHTML='';d.todasLojas.forEach(loja=>{let ativoClass=(loja.loja===d.loja)?'ativo':'';footer.innerHTML+='<div class="patrocinador-item '+ativoClass+'"><span class="patrocinador-nome" style="color:'+loja.cor+'">'+loja.loja+'</span></div>'});fetch('/qrcode').then(r=>r.text()).then(u=>document.getElementById('qrCode').src=u)});socket.on('atualizar_qtd',d=>{qtdDisplay.innerText=d.qtd});socket.on('aviso_vitoria_tv',d=>{const overlay=document.getElementById('overlayVitoria');document.getElementById('textoPremioTV').innerText="Acabou de ganhar "+d.premio+" na "+d.loja+"!";overlay.style.display='flex';overlay.classList.add('animacao-vitoria');audioTv.currentTime=0;audioTv.play().catch(e=>console.log("Som bloqueado pelo navegador"));var duration=3000;var end=Date.now()+duration;(function frame(){confetti({particleCount:5,angle:60,spread:55,origin:{x:0}});confetti({particleCount:5,angle:120,spread:55,origin:{x:1}});if(Date.now()<end)requestAnimationFrame(frame)}());setTimeout(()=>{overlay.style.display='none'},6000)});</script></body></html>`;
 
 // ==================================================================
 // 3. HTML MOBILE
@@ -145,8 +140,6 @@ app.use(express.static('public'));
 let historicoVendas = []; 
 let slideAtual = 0;
 
-campanhas.forEach(c => { if(!c.totalResgates) c.totalResgates = 0; });
-
 setInterval(() => { 
     slideAtual++; 
     if (slideAtual >= campanhas.length) slideAtual = 0; 
@@ -162,7 +155,9 @@ function gerarCodigo(prefixo) {
 }
 
 // ROTAS
-app.get('/marketing', (req, res) => res.send(htmlMarketing));
+// Aqui usamos a função renderMarketingPage(campanhas) para gerar o HTML "fresco"
+app.get('/marketing', (req, res) => res.send(renderMarketingPage(campanhas)));
+
 app.get('/tv', (req, res) => res.send(htmlTV));
 app.get('/mobile', (req, res) => res.send(htmlMobile));
 app.get('/admin', (req, res) => res.send(htmlAdmin));
@@ -192,26 +187,23 @@ app.post('/adicionar-loja', (req, res) => {
     res.redirect('/marketing');
 });
 
-// ROTA SALVAR EDIÇÃO (CORRIGIDA: == E FINDINDEX)
+// ROTA SALVAR EDIÇÃO (CORRIGIDA)
 app.post('/salvar-marketing', (req, res) => {
     const { id, arquivo, cor, qtd, prefixo } = req.body;
-    console.log("Tentando salvar...", req.body); // Log de diagnóstico
-
-    // O PULO DO GATO: findIndex com igualdade solta (==) acha string ou numero
+    
+    // Encontra índice da loja no array (funciona para string ou numero)
     const index = campanhas.findIndex(c => c.id == id);
     
     if(index > -1) {
         campanhas[index].arquivo = arquivo;
         campanhas[index].cor = cor;
-        campanhas[index].qtd = Number(qtd); // Garante que vira número
+        campanhas[index].qtd = Number(qtd); // Garante número
         campanhas[index].prefixo = prefixo;
         
         salvarBanco();
         io.emit('atualizar_banco_dados', campanhas);
-        console.log("Sucesso! Loja atualizada:", campanhas[index]);
-        res.redirect('/marketing');
+        res.redirect('/marketing'); // Recarrega a página com dados novos
     } else {
-        console.log("ERRO: ID não encontrado.");
         res.send('Erro: Loja não encontrada.');
     }
 });
@@ -246,7 +238,6 @@ io.on('connection', (socket) => {
     socket.on('resgatar_oferta', (dadosRecebidos) => {
         const id = dadosRecebidos.id;
         const dadosCliente = dadosRecebidos.cliente || {};
-        // Procura também com == para garantir
         let camp = campanhas.find(c => c.id == id); 
         
         if (camp) { 
