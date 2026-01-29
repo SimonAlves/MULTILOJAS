@@ -145,12 +145,13 @@ const htmlMobile = `<!DOCTYPE html><html><head><meta name="viewport" content="wi
 </style></head><body><div id="telaCarregando"><br><h2>Aguardando Sorteio...</h2><div class="loader"></div><p>Olhe para a TV!</p></div><div id="formCadastro"><h2 style="color:#333;">🎉 Quase lá!</h2><p>Preencha para liberar o prêmio:</p><input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo"><input type="tel" id="cZap" class="inp-dados" placeholder="(DD) 9XXXX-XXXX" maxlength="15" oninput="mascaraZap(this)">
 <div class="lgpd-box">
     <input type="checkbox" id="checkLGPD">
-    <label for="checkLGPD">Autorizo o tratamento de dados conforme Art. 1º da Lei nº 13.709 (LGPD) e confirmo que o número acima é verdadeiro para receber o voucher.</label>
+    <label for="checkLGPD">Autorizo o tratamento de dados conforme Art. 1º da Lei nº 13.709 (LGPD) e confirmo que o número acima é válido para receber o voucher.</label>
 </div>
 <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button></div><div id="telaVoucher" style="display:none"><div style="color:#003399;font-size:1.5rem;font-weight:900;margin-bottom:20px;" class="success-header">SUCESSO! 🎉</div><div class="ticket-card"><div style="height:10px;background:#F37021;width:100%;" id="topBar"></div><div class="store-logo" id="lojaNome">LOJA</div><div style="font-size:0.8rem;color:#666;letter-spacing:1px;text-transform:uppercase;">VOUCHER OFICIAL</div><h1 style="font-size:1.8rem;font-weight:700;color:#222;" id="nomePremio">...</h1><div style="background:#f8f9fa;border:2px dashed #ccc;padding:15px;margin:0 20px;border-radius:8px;"><div class="voucher-code" id="codVoucher">...</div></div><div style="font-size:0.8rem;color:#777;margin-top:10px;">Gerado em: <span id="dataHora"></span></div></div>
 <button onclick="enviarZapCliente()" class="btn-zap"><span>📱</span> BAIXAR NO MEU WHATSAPP</button>
 <button onclick="window.print()" class="btn-print"><span>🖨️</span> IMPRIMIR TELA</button>
-<button onclick="location.reload()" style="margin-top:15px;background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;">Pegar outro cupom</button></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();let campanhaAtualId=null;let travadoNoCadastro=false;let dadosGanhos=null;const audioVitoria=new Audio('/vitoria.mp3');audioVitoria.volume=0.5;
+<button onclick="location.reload()" style="margin-top:15px;background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;">Pegar outro cupom</button></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();let campanhaAtualId=null;let travadoNoCadastro=false;let dadosGanhos=null;let userZapGlobal="";
+const audioVitoria=new Audio('/vitoria.mp3');audioVitoria.volume=0.5;
 // MASCARA DE TELEFONE
 function mascaraZap(o){setTimeout(function(){var v=o.value;v=v.replace(/\D/g,"");v=v.replace(/^(\d\d)(\d)/g,"($1) $2");v=v.replace(/(\d{5})(\d)/,"$1-$2");o.value=v;},1);}
 socket.on('trocar_slide',d=>{if(travadoNoCadastro)return;if(d.modo!=='intro'){campanhaAtualId=d.id;travadoNoCadastro=true;document.getElementById('telaCarregando').style.display='none';document.getElementById('formCadastro').style.display='block'}else{document.getElementById('telaCarregando').style.display='block';document.getElementById('formCadastro').style.display='none';document.getElementById('telaVoucher').style.display='none'}});
@@ -159,21 +160,25 @@ function enviarCadastro(){
     const zap=document.getElementById('cZap').value;
     const check=document.getElementById('checkLGPD').checked;
     
-    // VALIDAÇÃO RIGOROSA
+    // VALIDACAO RIGOROSA
     if(!nome || !zap){alert("Por favor, preencha todos os campos!");return}
-    // Remove caracteres não numéricos para contar
+    // Remove caracteres e conta se tem 11 numeros (DDD + 9 + 8 digitos)
     const zapLimpo = zap.replace(/\D/g, "");
-    if(zapLimpo.length < 10){alert("Digite um número de WhatsApp válido (com DDD e 9 dígitos)!");return}
+    if(zapLimpo.length !== 11){alert("❌ Erro: Digite um WhatsApp válido com DDD + 9 dígitos (Ex: 11999998888)");return}
     if(!check){alert("⚠️ É obrigatório aceitar o termo da LGPD para continuar.");return}
+
+    // Salva o numero globalmente para uso no botao de baixar
+    userZapGlobal = zapLimpo;
 
     audioVitoria.play().then(()=>{audioVitoria.pause();audioVitoria.currentTime=0}).catch(e=>{});
     document.getElementById('formCadastro').innerHTML="<h2>Validando...</h2><div class='loader'></div>";
     socket.emit('resgatar_oferta',{id:campanhaAtualId,cliente:{nome,zap}})
 }
 function enviarZapCliente() {
-    if(!dadosGanhos) return;
+    if(!dadosGanhos || !userZapGlobal) return;
     const msg = "Olá! Ganhei o voucher *" + dadosGanhos.codigo + "* (" + dadosGanhos.produto + ") na loja *" + dadosGanhos.loja + "*.";
-    const link = "https://wa.me/" + "55" + document.getElementById('cZap').value.replace(/\D/g, "") + "?text=" + encodeURIComponent(msg);
+    // Usa o numero salvo na variavel global
+    const link = "https://wa.me/55" + userZapGlobal + "?text=" + encodeURIComponent(msg);
     window.open(link, '_blank');
 }
 socket.on('sucesso',d=>{
