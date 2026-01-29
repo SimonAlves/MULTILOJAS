@@ -29,7 +29,7 @@ function carregarBanco() {
         if (fs.existsSync(DB_FILE)) {
             campanhas = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
         } else {
-            campanhas = [{ id: 0, loja: "Exemplo", arquivo: "exemplo.jpg", modo: "sorte", cor: "#333", qtd: 50, prefixo: "EX", ehSorteio: true, premio1: "10% OFF", premio2: "50% OFF" }];
+            campanhas = [{ id: 0, loja: "Exemplo", arquivo: "exemplo.jpg", modo: "sorte", cor: "#333", qtd: 50, prefixo: "EX", premio1: "10% OFF", premio2: "50% OFF", ehSorteio: true }];
             salvarBanco();
         }
     } catch (err) { console.error("Erro DB:", err); campanhas = []; }
@@ -136,16 +136,16 @@ const renderMarketingPage = (lista) => `
 const htmlTV = `<!DOCTYPE html><html><head><title>TV OFERTAS</title><link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script><style>body{margin:0;background:black;overflow:hidden;font-family:'Montserrat',sans-serif;height:100vh;display:flex;flex-direction:column}#main-content{flex:1;display:flex;width:100%;height:85vh}#areaImagem{flex:3;position:relative;background-color:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}#imgPrincipal{max-width:100%;max-height:100%;object-fit:contain;z-index:2;display:block;box-shadow:0 0 50px rgba(0,0,0,0.5)}#fundoDesfocado{position:absolute;top:0;left:0;width:100%;height:100%;background-size:cover;background-position:center;filter:blur(30px)brightness(0.4);z-index:1}#sidebar{flex:1;background:#222;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly;color:white;padding:20px;text-align:center;box-shadow:-10px 0 30px rgba(0,0,0,0.5);z-index:10;transition:background-color 0.5s ease}.loja-box{background:white;color:#222;padding:10px 20px;border-radius:50px;margin-bottom:10px;width:90%;box-shadow:0 5px 15px rgba(0,0,0,0.2)}.loja-nome{font-size:1.5rem;font-weight:900;text-transform:uppercase;margin:0;line-height:1.1}.oferta-titulo{font-size:1.8rem;font-weight:700;margin:0;line-height:1.2;text-shadow:1px 1px 2px rgba(0,0,0,0.3)}.qr-container{background:white;padding:15px;border-radius:20px;width:80%;margin:10px auto;box-shadow:0 10px 25px rgba(0,0,0,0.3)}.qr-container img{width:100%;display:block}.cta-text{color:#FFD700;font-weight:900;font-size:1.4rem;text-transform:uppercase;margin-top:5px}.divider{width:90%;border-top:2px dashed rgba(255,255,255,0.3);margin:10px 0}.counter-number{font-size:6rem;font-weight:900;color:#FFD700;line-height:0.9;margin-top:5px;text-shadow:3px 3px 0px rgba(0,0,0,0.3)}#footer{height:15vh;background:#111;border-top:4px solid #FFD700;display:flex;align-items:center;justify-content:space-around;padding:0 10px;z-index:20}.patrocinador-item{opacity:0.4;transition:all 0.5s;filter:grayscale(100%);display:flex;align-items:center;transform:scale(0.9)}.patrocinador-item.ativo{opacity:1;transform:scale(1.3);filter:grayscale(0%);filter:drop-shadow(0 0 8px white);font-weight:bold}.patrocinador-nome{color:white;font-weight:bold;font-size:1rem;text-transform:uppercase;margin:0 10px}.pulse{animation:pulse 2s infinite}#overlayVitoria{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#FFD700}.animacao-vitoria{animation:zoomIn 0.5s ease-out}@keyframes zoomIn{from{transform:scale(0)}to{transform:scale(1)}}@media(orientation:portrait){#main-content{flex-direction:column}#areaImagem{flex:1.2;width:100%;border-bottom:5px solid #FFD700}#sidebar{flex:1;width:100%;box-shadow:0 -10px 30px rgba(0,0,0,0.5);padding:10px 0}#footer{height:10vh}.loja-nome{font-size:2.5rem}.counter-number{font-size:7rem}.qr-container{width:40%}}</style></head><body><div id="overlayVitoria"><h1 style="font-size:5rem;font-weight:900;text-transform:uppercase;margin:0;color:#fff;text-shadow:0 0 20px #FFD700">🎉 TEM GANHADOR! 🎉</h1><h2 style="font-size:3rem;margin-top:20px;color:#FFD700" id="textoPremioTV">...</h2></div><div id="main-content"><div id="areaImagem"><div id="fundoDesfocado"></div><img id="imgPrincipal" src=""></div><div id="sidebar"><div class="loja-box"><h1 id="storeName" class="loja-nome">LOJA</h1></div><h2 id="slideType" class="oferta-titulo">Oferta Especial</h2><div class="qr-container pulse"><img id="qrCode" src="qrcode.png"></div><div id="ctaText" class="cta-text">GARANTA O SEU</div><div class="divider"></div><div class="counter-area" id="counterBox"><p class="counter-label" style="text-transform:uppercase;font-size:0.9rem">Restam Apenas:</p><div id="qtdDisplay" class="counter-number">--</div></div></div></div><div id="footer"></div><script src="/socket.io/socket.io.js"></script><script>const socket=io();const imgMain=document.getElementById('imgPrincipal');const bgBlur=document.getElementById('fundoDesfocado');const sidebar=document.getElementById('sidebar');const storeName=document.getElementById('storeName');const lojaBox=document.querySelector('.loja-box');const slideType=document.getElementById('slideType');const ctaText=document.getElementById('ctaText');const qtdDisplay=document.getElementById('qtdDisplay');const counterBox=document.getElementById('counterBox');const footer=document.getElementById('footer');const audioTv=new Audio('/vitoria.mp3');audioTv.volume=1.0;function forcarDesbloqueio(){if(audioTv.paused){audioTv.play().then(()=>{audioTv.pause();audioTv.currentTime=0;}).catch(e=>{})}}document.addEventListener('click',forcarDesbloqueio);document.addEventListener('keydown',forcarDesbloqueio);window.onload=forcarDesbloqueio;socket.on('atualizar_banco_dados',novaLista=>{location.reload()});socket.on('trocar_slide',d=>{const caminhoImagem='/'+d.arquivo;imgMain.src=caminhoImagem;bgBlur.style.backgroundImage="url('"+caminhoImagem+"')";sidebar.style.backgroundColor=d.cor;storeName.innerText=d.loja;lojaBox.style.color=d.cor;slideType.innerText="Sorteio do Dia";ctaText.innerText="TENTE A SORTE";counterBox.style.display='block';qtdDisplay.innerText=d.qtd;document.querySelector('.qr-container').classList.add('pulse');footer.innerHTML='';d.todasLojas.forEach(loja=>{let ativoClass=(loja.loja===d.loja)?'ativo':'';footer.innerHTML+='<div class="patrocinador-item '+ativoClass+'"><span class="patrocinador-nome" style="color:'+loja.cor+'">'+loja.loja+'</span></div>'});fetch('/qrcode').then(r=>r.text()).then(u=>document.getElementById('qrCode').src=u)});socket.on('atualizar_qtd',d=>{qtdDisplay.innerText=d.qtd});socket.on('aviso_vitoria_tv',d=>{const overlay=document.getElementById('overlayVitoria');document.getElementById('textoPremioTV').innerText="Acabou de ganhar "+d.premio+" na "+d.loja+"!";overlay.style.display='flex';overlay.classList.add('animacao-vitoria');audioTv.currentTime=0;audioTv.play().catch(e=>{});var duration=3000;var end=Date.now()+duration;(function frame(){confetti({particleCount:5,angle:60,spread:55,origin:{x:0}});confetti({particleCount:5,angle:120,spread:55,origin:{x:1}});if(Date.now()<end)requestAnimationFrame(frame)}());setTimeout(()=>{overlay.style.display='none'},6000)});</script></body></html>`;
 
 // ==================================================================
-// 3. HTML MOBILE (LGPD + VALIDAÇÃO ZAP)
+// 3. HTML MOBILE (LGPD + VALIDAÇÃO ZAP + DOWNLOAD)
 // ==================================================================
 const htmlMobile = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script><style>body{font-family:'Roboto',sans-serif;text-align:center;padding:20px;background:#f0f2f5;margin:0}.ticket-card{background:white;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.1);overflow:hidden;margin-bottom:25px;padding-bottom:20px}.store-logo{font-size:2rem;font-weight:900;margin:20px 0 5px 0;color:#333;text-transform:uppercase}.voucher-code{font-family:'Courier New',monospace;font-size:2rem;font-weight:900;color:#333;letter-spacing:2px}.btn-print{background:#333;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:1.1rem;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 10px rgba(0,0,0,0.2)}.btn-zap{background:#25D366;color:white;border:none;padding:15px;width:100%;border-radius:8px;font-size:1.1rem;font-weight:bold;cursor:pointer;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:10px;}.loader{border:5px solid #f3f3f3;border-top:5px solid #333;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}#formCadastro{background:white;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.1);display:none}.inp-dados{width:90%;padding:15px;margin:10px 0;border:1px solid #ccc;border-radius:5px;font-size:16px;outline:none;transition:0.3s}.inp-dados:focus{border-color:#003399;box-shadow:0 0 5px rgba(0,51,153,0.3)}.btn-enviar{background:#28a745;color:white;font-weight:bold;font-size:18px;border:none;padding:15px;width:100%;border-radius:5px;cursor:pointer;transition:0.3s}.btn-enviar:active{transform:scale(0.95)}
-/* Checkbox Customizado */
-.lgpd-box { text-align: left; font-size: 0.8rem; margin: 15px 0; display: flex; gap: 10px; align-items: flex-start; color: #555; }
-.lgpd-box input { transform: scale(1.5); margin-top: 3px; }
+/* Checkbox Customizado LGPD */
+.lgpd-box { text-align: left; font-size: 0.8rem; margin: 15px 0; display: flex; gap: 10px; align-items: flex-start; color: #555; background: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px dashed #ccc; }
+.lgpd-box input { transform: scale(1.5); margin-top: 3px; min-width: 20px; }
 </style></head><body><div id="telaCarregando"><br><h2>Aguardando Sorteio...</h2><div class="loader"></div><p>Olhe para a TV!</p></div><div id="formCadastro"><h2 style="color:#333;">🎉 Quase lá!</h2><p>Preencha para liberar o prêmio:</p><input type="text" id="cNome" class="inp-dados" placeholder="Seu Nome Completo"><input type="tel" id="cZap" class="inp-dados" placeholder="(DD) 9XXXX-XXXX" maxlength="15" oninput="mascaraZap(this)">
 <div class="lgpd-box">
     <input type="checkbox" id="checkLGPD">
-    <label for="checkLGPD">Autorizo o tratamento de dados conforme Art. 1º da Lei nº 13.709 (LGPD) e confirmo que o número acima é válido para recebimento do voucher.</label>
+    <label for="checkLGPD">Autorizo o tratamento de dados conforme Art. 1º da Lei nº 13.709 (LGPD) e confirmo que o número acima é verdadeiro para receber o voucher.</label>
 </div>
 <button onclick="enviarCadastro()" class="btn-enviar">LIBERAR PRÊMIO 🎁</button></div><div id="telaVoucher" style="display:none"><div style="color:#003399;font-size:1.5rem;font-weight:900;margin-bottom:20px;" class="success-header">SUCESSO! 🎉</div><div class="ticket-card"><div style="height:10px;background:#F37021;width:100%;" id="topBar"></div><div class="store-logo" id="lojaNome">LOJA</div><div style="font-size:0.8rem;color:#666;letter-spacing:1px;text-transform:uppercase;">VOUCHER OFICIAL</div><h1 style="font-size:1.8rem;font-weight:700;color:#222;" id="nomePremio">...</h1><div style="background:#f8f9fa;border:2px dashed #ccc;padding:15px;margin:0 20px;border-radius:8px;"><div class="voucher-code" id="codVoucher">...</div></div><div style="font-size:0.8rem;color:#777;margin-top:10px;">Gerado em: <span id="dataHora"></span></div></div>
 <button onclick="enviarZapCliente()" class="btn-zap"><span>📱</span> BAIXAR NO MEU WHATSAPP</button>
@@ -161,7 +161,9 @@ function enviarCadastro(){
     
     // VALIDAÇÃO RIGOROSA
     if(!nome || !zap){alert("Por favor, preencha todos os campos!");return}
-    if(zap.length < 14){alert("Digite um número de WhatsApp válido (com DDD e 9 dígitos)!");return}
+    // Remove caracteres não numéricos para contar
+    const zapLimpo = zap.replace(/\D/g, "");
+    if(zapLimpo.length < 10){alert("Digite um número de WhatsApp válido (com DDD e 9 dígitos)!");return}
     if(!check){alert("⚠️ É obrigatório aceitar o termo da LGPD para continuar.");return}
 
     audioVitoria.play().then(()=>{audioVitoria.pause();audioVitoria.currentTime=0}).catch(e=>{});
@@ -171,7 +173,7 @@ function enviarCadastro(){
 function enviarZapCliente() {
     if(!dadosGanhos) return;
     const msg = "Olá! Ganhei o voucher *" + dadosGanhos.codigo + "* (" + dadosGanhos.produto + ") na loja *" + dadosGanhos.loja + "*.";
-    const link = "https://wa.me/?text=" + encodeURIComponent(msg);
+    const link = "https://wa.me/" + "55" + document.getElementById('cZap').value.replace(/\D/g, "") + "?text=" + encodeURIComponent(msg);
     window.open(link, '_blank');
 }
 socket.on('sucesso',d=>{
@@ -235,7 +237,7 @@ app.get('/caixa', (req, res) => res.send(htmlCaixa));
 app.get('/', (req, res) => res.redirect('/tv'));
 app.get('/qrcode', (req, res) => { const url = `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}/mobile`; QRCode.toDataURL(url, (e, s) => res.send(s)); });
 
-// ROTAS DE AÇÃO (ADD, SALVAR, DELETAR)
+// ROTA ADICIONAR LOJA
 app.post('/adicionar-loja', upload.single('imagemUpload'), (req, res) => {
     const { loja, cor, prefixo, premio1, premio2 } = req.body;
     let novoId = campanhas.length > 0 ? Math.max(...campanhas.map(c => c.id)) + 1 : 0;
@@ -247,6 +249,7 @@ app.post('/adicionar-loja', upload.single('imagemUpload'), (req, res) => {
     res.redirect('/marketing');
 });
 
+// ROTA SALVAR EDIÇÃO
 app.post('/salvar-marketing', upload.single('imagemUpload'), (req, res) => {
     const { id, cor, qtd, prefixo, arquivoAtual, premio1, premio2 } = req.body;
     let index = campanhas.findIndex(c => c.id == id);
@@ -264,6 +267,7 @@ app.post('/salvar-marketing', upload.single('imagemUpload'), (req, res) => {
     } else { res.send('Erro: Loja não encontrada.'); }
 });
 
+// ROTA DELETAR
 app.post('/deletar-loja', (req, res) => {
     const id = parseInt(req.body.id);
     campanhas = campanhas.filter(c => c.id !== id);
@@ -272,6 +276,7 @@ app.post('/deletar-loja', (req, res) => {
     res.redirect('/marketing');
 });
 
+// RELATÓRIO EXCEL
 app.get('/baixar-relatorio', (req, res) => {
     const dataHoje = new Date().toLocaleDateString('pt-BR');
     let relatorio = `<html><head><meta charset="UTF-8"></head><body style="font-family:Arial;background:#f4f4f4"><table width="100%"><tr><td colspan="8" style="background:#111;color:#FFD700;padding:20px;text-align:center;font-size:24px;font-weight:bold;border-bottom:5px solid #FFD700">🏆 RELATÓRIO FERRARI</td></tr><tr><td colspan="8" style="background:#333;color:#fff;text-align:center">Gerado em: ${dataHoje}</td></tr></table><br><table border="1" style="width:100%;border-collapse:collapse;text-align:center"><thead><tr style="background:#222;color:white"><th>DATA</th><th>HORA</th><th>LOJA</th><th>CÓDIGO</th><th>PRÊMIO</th><th>STATUS</th><th style="background:#0055aa">NOME</th><th style="background:#0055aa">ZAP</th></tr></thead><tbody>`;
